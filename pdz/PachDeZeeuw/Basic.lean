@@ -4,9 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam McKenna
 -/
 
-import FormalConjectures.Util.ProblemImports
-import Erdos98Proof.Foundation
-import Erdos98Proof.ExternalDefs
+import PachDeZeeuw.CurveInterface
 
 /-!
 # Pach--de Zeeuw low-level interface
@@ -19,12 +17,9 @@ files can build on a stable namespace.
 
 set_option linter.style.longLine false
 
-namespace Erdos98Proof.PDZ
+namespace PachDeZeeuw.PDZ
 
 open EuclideanGeometry
-
-/-- The plane as a 2-vector space. -/
-abbrev Point2 := EuclideanSpace ℝ (Fin 2)
 
 /-- The ambient 4-vector space for auxiliary-curve geometry. -/
 abbrev Point4 := EuclideanSpace ℝ (Fin 4)
@@ -248,4 +243,4 @@ lemma lemma37_equalDistanceQuadruple_lower {d : ℕ}
     simpa [S, f, bipartiteDistances, equalDistanceQuadruples] using hmain
   simpa [Nat.mul_pow] using hmain'
 
-end Erdos98Proof.PDZ
+end PachDeZeeuw.PDZ

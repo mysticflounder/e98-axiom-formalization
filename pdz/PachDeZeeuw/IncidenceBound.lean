@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam McKenna
 -/
 
-import Erdos98Proof.Branch2.PachDeZeeuw.Theorem12
+import PachDeZeeuw.Theorem12
 import Mathlib.Tactic
 
 /-!
@@ -19,7 +19,7 @@ integer incidence estimate consumed by `theorem12_bipartiteDistinctDistances`.
 
 set_option linter.style.longLine false
 
-namespace Erdos98Proof.PDZ
+namespace PachDeZeeuw.PDZ
 
 /-- The auxiliary point set is an image of `P₂ × P₂`. -/
 lemma auxPointSet_card_le {d : ℕ} (X : PreparedBipartiteInput d) :
@@ -156,7 +156,7 @@ Theorem 1.2 reduced directly to the final incidence-decomposition target.
 -/
 theorem theorem12_bipartiteDistinctDistances_of_decomposition
     (hdecomp : AuxiliaryIncidenceDecompositionBoundStatement) :
-    Erdos98Proof.Theorem12_BipartiteDistinctDistancesStatement :=
+    PachDeZeeuw.Theorem12_BipartiteDistinctDistancesStatement :=
   theorem12_bipartiteDistinctDistances
     (auxiliaryIncidenceUpperBound_of_decomposition hdecomp)
 
@@ -165,15 +165,15 @@ Theorem 1.2 reduced to the positive-product incidence-decomposition target.
 -/
 theorem theorem12_bipartiteDistinctDistances_of_positiveDecomposition
     (hpos : PositiveAuxiliaryIncidenceDecompositionBoundStatement) :
-    Erdos98Proof.Theorem12_BipartiteDistinctDistancesStatement :=
+    PachDeZeeuw.Theorem12_BipartiteDistinctDistancesStatement :=
   theorem12_bipartiteDistinctDistances_of_decomposition
     (auxiliaryIncidenceDecomposition_of_positive hpos)
 
 /-- Theorem 1.2 reduced to the direct positive-product cubed incidence bound. -/
 theorem theorem12_bipartiteDistinctDistances_of_positiveCardBound
     (hcard : PositiveAuxiliaryIncidenceCardBoundStatement) :
-    Erdos98Proof.Theorem12_BipartiteDistinctDistancesStatement :=
+    PachDeZeeuw.Theorem12_BipartiteDistinctDistancesStatement :=
   theorem12_bipartiteDistinctDistances_of_positiveDecomposition
     (positiveAuxiliaryIncidenceDecomposition_of_cardBound hcard)
 
-end Erdos98Proof.PDZ
+end PachDeZeeuw.PDZ

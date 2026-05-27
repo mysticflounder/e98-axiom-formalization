@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam McKenna
 -/
 
-import Erdos98Proof.Branch2.PachDeZeeuw.Theorem12
+import PachDeZeeuw.Theorem12
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.SDiff
 import Mathlib.Tactic
@@ -18,7 +18,7 @@ Theorem 1.1 from the balanced bipartite Theorem 1.2 statement.
 
 set_option linter.style.longLine false
 
-namespace Erdos98Proof
+namespace PachDeZeeuw
 
 open EuclideanGeometry
 
@@ -46,9 +46,9 @@ lemma distinctDistances_le_of_subset {E₁ E₂ : Finset ℝ²}
   exact ⟨(pq.1, pq.2), by
     exact Finset.mem_offDiag.mpr ⟨hE hpa, hE hpb, hneq⟩, rfl⟩
 
-end Erdos98Proof
+end PachDeZeeuw
 
-namespace Erdos98Proof.PDZ
+namespace PachDeZeeuw.PDZ
 
 open EuclideanGeometry
 
@@ -105,8 +105,8 @@ lemma split_finset_into_two_comparable_parts
 least two points, then splitting it into two comparable parts and applying
 Theorem 1.2 gives the guarded Pach--de Zeeuw Theorem 1.1 form. -/
 theorem theorem11_irreducibleCurve_distinctDistances
-    (h12 : Erdos98Proof.Theorem12_BipartiteDistinctDistancesStatement) :
-    Erdos98Proof.PachDeZeeuwIrreducibleCurveDistinctDistancesStatement := by
+    (h12 : PachDeZeeuw.Theorem12_BipartiteDistinctDistancesStatement) :
+    PachDeZeeuw.PachDeZeeuwIrreducibleCurveDistinctDistancesStatement := by
   intro d
   rcases h12 d with ⟨C, hCpos, h12C⟩
   refine ⟨81 * C, by omega, ?_⟩
@@ -197,4 +197,4 @@ theorem theorem11_irreducibleCurve_distinctDistances
     _ = (81 * C) * (distinctDistances E) ^ 3 := by
       simp [Nat.mul_assoc]
 
-end Erdos98Proof.PDZ
+end PachDeZeeuw.PDZ

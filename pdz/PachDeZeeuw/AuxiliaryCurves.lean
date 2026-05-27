@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam McKenna
 -/
 
-import Erdos98Proof.Branch2.PachDeZeeuw.Basic
+import PachDeZeeuw.Basic
 import Mathlib.Algebra.MvPolynomial.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.Prod
@@ -19,7 +19,7 @@ used by the later Pach--de Zeeuw incidence packet.
 
 set_option linter.style.longLine false
 
-namespace Erdos98Proof.PDZ
+namespace PachDeZeeuw.PDZ
 
 open EuclideanGeometry
 
@@ -227,4 +227,4 @@ theorem auxIncidenceBridge : AuxIncidenceBridgeStatement := by
       rw [Finset.card_image_of_injective _ hf]
     _ ≤ (auxIncidences X).card := Finset.card_le_card hsubset
 
-end Erdos98Proof.PDZ
+end PachDeZeeuw.PDZ

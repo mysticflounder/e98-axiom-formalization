@@ -4,7 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam McKenna
 -/
 
-import Erdos98Proof.Branch2.PachDeZeeuw.AuxiliaryCurves
+import PachDeZeeuw.AuxiliaryCurves
 
 /-!
 # Pach--de Zeeuw Theorem 1.2 surface
@@ -16,7 +16,7 @@ packet.
 
 set_option linter.style.longLine false
 
-namespace Erdos98Proof
+namespace PachDeZeeuw
 
 /--
 Balanced Theorem 1.2 corollary needed for Theorem 1.1. The paper's Theorem
@@ -55,7 +55,7 @@ auxiliary-incidence upper bound.
 -/
 theorem theorem12_bipartiteDistinctDistances
     (hUpper : AuxiliaryIncidenceUpperBoundStatement) :
-    Erdos98Proof.Theorem12_BipartiteDistinctDistancesStatement := by
+    PachDeZeeuw.Theorem12_BipartiteDistinctDistancesStatement := by
   intro d
   rcases hUpper d with ⟨C, hCpos, hUpperC⟩
   refine ⟨C, hCpos, ?_⟩
@@ -98,4 +98,4 @@ theorem theorem12_bipartiteDistinctDistances
 
 end PDZ
 
-end Erdos98Proof
+end PachDeZeeuw
