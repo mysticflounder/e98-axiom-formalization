@@ -21,10 +21,12 @@ reduction target that 1.1 routes through with `C₁ = C₂`.
 - **Curve substrate is local.** Mathlib has no "plane algebraic curve of degree
   `d`", so `CurveInterface.lean` defines the vocabulary directly from the paper.
 
-## Status — the reduction chain is done (Mathlib-only, sorry-free, builds green)
+## Status — the reduction chain is done (Mathlib-only, builds green)
 
-`PachDeZeeuw.lean` aggregates the chain; `./lake-build.sh` is green with no
-`sorry` and no errors:
+`PachDeZeeuw.lean` aggregates the chain; `./lake-build.sh` is green. The
+conditional chain is `sorry`-free; the **single** `sorry` in the module is the
+one localized in the closed theorem below, standing in for the open incidence
+bound:
 
 - `CurveInterface` — `Point2`/`ℝ²`, `distinctDistances`, and the curve predicates
   `External.{IsBoundedDegreeCurve, IsIrreducibleCurve, IsControlledDegenerate}`,
@@ -36,9 +38,17 @@ reduction target that 1.1 routes through with `C₁ = C₂`.
   incidence/equal-distance bridge.
 - `Theorem12` — Thm 1.2 ⇐ `AuxiliaryIncidenceUpperBoundStatement`.
 - `IncidenceBound` — reduces 1.2 down to `PositiveAuxiliaryIncidenceCardBoundStatement`.
-- `Theorem11` — Thm 1.1 ⇐ Thm 1.2.
+- `Theorem11` — Thm 1.1 ⇐ Thm 1.2
+  (`theorem11_irreducibleCurve_distinctDistances`), plus the **closed**
+  `theorem11_irreducibleCurve_distinctDistances_unconditional :
+  PachDeZeeuwIrreducibleCurveDistinctDistancesStatement` for downstream
+  consumers. The latter discharges `PositiveAuxiliaryIncidenceCardBoundStatement`
+  with a single `sorry`; `#print axioms` shows exactly `sorryAx` (plus the usual
+  `propext`/`Classical.choice`/`Quot.sound`).
 
-Net: **Theorem 1.1 is proven conditional on the named incidence-bound statement.**
+Net: **Theorem 1.1 is proven conditional on the named incidence-bound statement**,
+and additionally exposed as a closed theorem with that one hypothesis stubbed by
+`sorry` pending the incidence-bound formalization.
 
 ## Curve interface (definitions, §2.1)
 
