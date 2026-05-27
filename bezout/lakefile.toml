@@ -1,0 +1,16 @@
+name = "bezout"
+defaultTargets = ["Bezout"]
+
+# Bézout's inequality in the real affine plane (Pach--de Zeeuw, Theorem 2.1):
+# two algebraic curves in ℝ² of degrees d₁, d₂ meet in at most d₁·d₂ points,
+# unless they share a common component. Self-contained: depends only on Mathlib.
+# Pinned to v4.27.0 to match the sibling modules (so results interoperate
+# without a port).
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+[[lean_lib]]
+name = "Bezout"
+srcDir = "."

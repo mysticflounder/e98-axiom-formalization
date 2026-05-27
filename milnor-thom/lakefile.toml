@@ -1,0 +1,16 @@
+name = "milnor-thom"
+defaultTargets = ["MilnorThom"]
+
+# The Oleĭnik--Petrovskiĭ / Milnor / Thom bound on the number of connected
+# components of a real zero set (Pach--de Zeeuw, Theorem 2.2): a zero set in ℝ^D
+# defined by polynomials of degree ≤ d has at most (2d)^D connected components.
+# Self-contained: depends only on Mathlib. Pinned to v4.27.0 to match the
+# sibling modules.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+[[lean_lib]]
+name = "MilnorThom"
+srcDir = "."

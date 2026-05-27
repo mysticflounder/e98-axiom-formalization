@@ -1,0 +1,22 @@
+name = "curve-symmetries"
+defaultTargets = ["CurveSymmetries"]
+
+# Symmetries of plane algebraic curves (Pach--de Zeeuw, §2.3): Lemma 2.5 (an
+# irreducible plane curve of degree d has ≤ 4d symmetries unless it is a line or
+# circle) and Lemma 2.6 (the affine transformations that fix a conic). Pinned to
+# v4.27.0 to match the sibling modules.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+# Lemma 2.5's proof invokes Bézout's inequality (Theorem 2.1): a symmetry that
+# fixes infinitely many points of an irreducible curve fixes the curve. Hence
+# the local dependency on the sibling `bezout` module.
+[[require]]
+name = "bezout"
+path = "../bezout"
+
+[[lean_lib]]
+name = "CurveSymmetries"
+srcDir = "."

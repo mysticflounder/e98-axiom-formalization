@@ -10,12 +10,21 @@ the larger proof consumes.
 | Module | What it formalizes | Depends on |
 |--------|--------------------|------------|
 | [`crossing-lemma`](crossing-lemma/) | The multigraph crossing lemma (Székely / Ajtai–Chvátal–Newborn–Szemerédi), via combinatorial maps and the planar Euler bound. | Mathlib only |
+| [`bezout`](bezout/) | Bézout's inequality in the real plane — two curves of degrees `d₁, d₂` meet in `≤ d₁·d₂` points unless they share a component (Pach–de Zeeuw Thm 2.1). | Mathlib only |
+| [`milnor-thom`](milnor-thom/) | The Oleĭnik–Petrovskiĭ / Milnor / Thom bound — a real zero set in `ℝ^D` from degree-`≤d` polynomials has `≤ (2d)^D` connected components (Pach–de Zeeuw Thm 2.2). | Mathlib only |
+| [`curve-symmetries`](curve-symmetries/) | Symmetries of plane curves — `≤ 4d` symmetries unless a line/circle, and the affine maps fixing a conic (Pach–de Zeeuw §2.3, Lemmas 2.5–2.6). | Mathlib + `bezout` |
 | [`pach-sharir`](pach-sharir/) | The Pach–Sharir incidence bound for points and bounded-degree algebraic curves with two degrees of freedom (Pach–de Zeeuw Thm 2.3). | Mathlib + `crossing-lemma` |
 | [`pdz`](pdz/) | Pach–de Zeeuw **Theorem 1.1** — distinct distances on a plane algebraic curve (`n^{4/3}` lower bound, no line/circle). | Mathlib + `crossing-lemma` |
 
 The dependency spine: `crossing-lemma` → `pach-sharir` (Szemerédi–Trotter-type
 incidence bound) → `pdz` (reduces Theorem 1.1 to a specialization of that bound).
-Each arrow is a local-path `require`. Further modules may be added over time.
+Each arrow is a local-path `require`.
+
+`bezout`, `milnor-thom`, and `curve-symmetries` are the paper's §2
+algebraic-geometry inputs (Theorems 2.1, 2.2 and Lemmas 2.5–2.6). They are the
+deferred frontier of `pdz`: it currently axiomatizes their content behind named
+hypotheses, and will `require` them as each is built. Further modules may be
+added over time.
 
 ## Conventions
 
