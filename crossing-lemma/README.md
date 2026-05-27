@@ -8,6 +8,13 @@ multigraph / Pach–Tóth form):
 > multiplicity at most `M`, if `e ≥ 4·M·v` then the crossing number satisfies
 > `e³ ≤ 64·M·v²·cr`.
 
+The statement requires the drawing to be **well-drawn**: its declared `crossings`
+field must be at least the true number of interior crossings (`crossingCount`,
+the count of edge-index pairs `i < j` whose arc interiors meet). This rules out
+the otherwise-vacuous instance where `crossings` is declared `0` — without it the
+inequality, being a *lower* bound on `cr`, would be falsifiable. A drawing that
+sets `crossings := crossingCount` satisfies `WellDrawn` by reflexivity.
+
 ## Goals
 
 1. **A reusable, dependency-light crossing lemma in Lean.** The crossing

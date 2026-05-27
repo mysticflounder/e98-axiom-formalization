@@ -106,7 +106,7 @@ per-`(a,b)` inequality, with `p = a/b` ranging over `(0,1]`. -/
 /-- **`WeakAveragedBound`** — the assumed weak bound the bridge must supply.
 
 For every drawn multigraph `G` and multiplicity cap `M > 0` with `G.multiplicity ≤ M`
-everywhere, and for every rational sampling parameter `p = a/b ∈ (0,1]` (encoded as
+everywhere and `G` `WellDrawn`, and for every rational sampling parameter `p = a/b ∈ (0,1]` (encoded as
 `0 < a ≤ b` in `ℕ`, cleared by `b⁴`):
 
   `M · a² · b² · e  ≤  a⁴ · cr  +  3 · M² · a · b³ · v`,
@@ -121,6 +121,7 @@ def WeakAveragedBound : Prop :=
   ∀ (G : DrawnMultigraph) (M : ℕ),
     0 < M →
     (∀ p q, G.multiplicity p q ≤ M) →
+    G.WellDrawn →
     ∀ a b : ℕ, 0 < a → a ≤ b →
       M * a ^ 2 * b ^ 2 * G.numEdges ≤
         a ^ 4 * G.crossings + 3 * M ^ 2 * a * b ^ 3 * G.V.card
@@ -158,7 +159,7 @@ The proof: with `v := G.V.card`, `e := G.numEdges`, `cr := G.crossings`:
   gives `e³ ≤ 64·M·v²·cr`. -/
 theorem crossingLemma_of_weakBound (hweak : WeakAveragedBound) :
     CrossingLemmaMultigraphStatement := by
-  intro G M hM hmult hthresh
+  intro G M hM hmult hwd hthresh
   set v := G.V.card with hv
   set e := G.numEdges with he
   set cr := G.crossings with hcr
@@ -170,7 +171,7 @@ theorem crossingLemma_of_weakBound (hweak : WeakAveragedBound) :
   -- Case `v ≥ 1`. Instantiate hweak at a = 4*M*v, b = e.
   · have ha : 0 < 4 * M * v := by positivity
     have hab : 4 * M * v ≤ e := hthresh
-    have key := hweak G M hM hmult (4 * M * v) e ha hab
+    have key := hweak G M hM hmult hwd (4 * M * v) e ha hab
     -- `key : M * (4*M*v)^2 * e^2 * e ≤ (4*M*v)^4 * cr + 3 * M^2 * (4*M*v) * e^3 * v`
     -- Extract the cleared intermediate `4*M^3*v^2*e^3 ≤ 256*M^4*v^4*cr`.
     have hmid : 4 * M ^ 3 * v ^ 2 * e ^ 3 ≤ 256 * M ^ 4 * v ^ 4 * cr := by

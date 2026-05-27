@@ -66,13 +66,42 @@ noncomputable def DrawnMultigraph.multiplicity (G : DrawnMultigraph) (p q : ℝ 
   exact (Finset.univ.filter
     (fun i : Fin G.numEdges => G.endpoints i = (p, q) ∨ G.endpoints i = (q, p))).card
 
+/-- Interior of an arc: the image of the *open* unit interval `(0,1)` under
+`param` (endpoints excluded, so arcs that share a vertex are still allowed to
+have disjoint interiors). -/
+def interiorOfArc (a : SimpleCurveArc) : Set (ℝ × ℝ) :=
+  a.param '' {t : Set.Icc (0 : ℝ) 1 | (0 : ℝ) < (t : ℝ) ∧ (t : ℝ) < 1}
+
+/-- The true number of crossings of a drawing: the number of unordered edge-index
+pairs `i < j` whose arc *interiors* intersect. This is the geometric quantity the
+crossing lemma lower-bounds; the structure's `crossings` field is only required to
+be *at least* this (see `WellDrawn`), since the field is otherwise unconstrained. -/
+noncomputable def DrawnMultigraph.crossingCount (G : DrawnMultigraph) : ℕ := by
+  classical
+  exact ((Finset.univ : Finset (Fin G.numEdges × Fin G.numEdges)).filter
+    (fun ij => ij.1 < ij.2 ∧
+      (interiorOfArc (G.arc ij.1) ∩ interiorOfArc (G.arc ij.2)).Nonempty)).card
+
+/-- **Well-drawn:** the declared `crossings` count is at least the true number of
+interior crossings. Without this the `crossings` field is free and the crossing
+inequality — a *lower* bound on `crossings` — is vacuously falsifiable by declaring
+`crossings := 0` (witness: the complete multigraph). `WellDrawn` is exactly the
+hypothesis that rules that out, and it holds by `le_refl` for any drawing that
+sets `crossings := crossingCount`. -/
+def DrawnMultigraph.WellDrawn (G : DrawnMultigraph) : Prop :=
+  G.crossingCount ≤ G.crossings
+
 /-- Finite multigraph crossing inequality (Székely / ACNS, multigraph form):
-for a plane-drawn multigraph with edge multiplicity ≤ M and e ≥ 4·M·v edges,
-e³ ≤ 64·M·v²·cr. Kept entirely in ℕ and cubed (no rpow). -/
+for a plane-drawn multigraph with edge multiplicity ≤ M, that is `WellDrawn`
+(its `crossings` field is at least the true interior-crossing count), and has
+e ≥ 4·M·v edges, e³ ≤ 64·M·v²·cr. Kept entirely in ℕ and cubed (no rpow). The
+`WellDrawn` hypothesis is load-bearing: the conclusion lower-bounds `crossings`,
+so without it the statement is vacuously falsifiable (declare `crossings := 0`). -/
 def CrossingLemmaMultigraphStatement : Prop :=
   ∀ (G : DrawnMultigraph) (M : ℕ),
     0 < M →
     (∀ p q, G.multiplicity p q ≤ M) →
+    G.WellDrawn →
     4 * M * G.V.card ≤ G.numEdges →
       G.numEdges ^ 3 ≤ 64 * M * G.V.card ^ 2 * G.crossings
 
@@ -157,12 +186,6 @@ theorem rotationOfOrder_congr {β : Type*} [Fintype β] (L₁ L₂ : LinearOrder
   exact (hlt _ _).mpr (isoFin_lt L₂ hab)
 
 /-! ### Layer 2 — BR-0 companion definitions (geometry) -/
-
-/-- Interior of an arc: the image of the *open* unit interval `(0,1)` under
-`param` (endpoints excluded, so arcs that share a vertex are still allowed to
-have disjoint interiors). -/
-def interiorOfArc (a : SimpleCurveArc) : Set (ℝ × ℝ) :=
-  a.param '' {t : Set.Icc (0 : ℝ) 1 | (0 : ℝ) < (t : ℝ) ∧ (t : ℝ) < 1}
 
 /-- **Geometric crossing-freeness (BR-0):** distinct edges have disjoint arc
 interiors. -/
