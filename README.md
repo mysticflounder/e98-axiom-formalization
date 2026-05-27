@@ -10,10 +10,12 @@ the larger proof consumes.
 | Module | What it formalizes | Depends on |
 |--------|--------------------|------------|
 | [`crossing-lemma`](crossing-lemma/) | The multigraph crossing lemma (Székely / Ajtai–Chvátal–Newborn–Szemerédi), via combinatorial maps and the planar Euler bound. | Mathlib only |
+| [`pach-sharir`](pach-sharir/) | The Pach–Sharir incidence bound for points and bounded-degree algebraic curves with two degrees of freedom (Pach–de Zeeuw Thm 2.3). | Mathlib + `crossing-lemma` |
 | [`pdz`](pdz/) | Pach–de Zeeuw **Theorem 1.1** — distinct distances on a plane algebraic curve (`n^{4/3}` lower bound, no line/circle). | Mathlib + `crossing-lemma` |
 
-`pdz` imports `crossing-lemma` (by local path `../crossing-lemma`) to discharge
-its point–curve incidence bound. Further modules may be added over time.
+The dependency spine: `crossing-lemma` → `pach-sharir` (Szemerédi–Trotter-type
+incidence bound) → `pdz` (reduces Theorem 1.1 to a specialization of that bound).
+Each arrow is a local-path `require`. Further modules may be added over time.
 
 ## Conventions
 

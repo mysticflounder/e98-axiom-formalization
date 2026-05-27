@@ -1,0 +1,20 @@
+name = "pach-sharir"
+defaultTargets = ["PachSharir"]
+
+# The Pach--Sharir incidence bound for points and bounded-degree algebraic
+# curves with two degrees of freedom. Pinned to v4.27.0 to match the sibling
+# modules (so results interoperate without a port).
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+# Pach--Sharir is proved via a Szemeredi--Trotter-type argument that bottoms out
+# in the multigraph crossing lemma, developed as a self-contained sibling module.
+[[require]]
+name = "crossing-lemma"
+path = "../crossing-lemma"
+
+[[lean_lib]]
+name = "PachSharir"
+srcDir = "."
