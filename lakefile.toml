@@ -1,0 +1,14 @@
+name = "crossing-lemma"
+defaultTargets = ["CrossingLemma"]
+
+# The multigraph crossing lemma (Szekely / Ajtai-Chvatal-Newborn-Szemeredi),
+# proved via combinatorial maps and the planar Euler bound. Self-contained:
+# depends only on Mathlib. Pinned to v4.27.0 to match the pdz consumer.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+[[lean_lib]]
+name = "CrossingLemma"
+srcDir = "."
