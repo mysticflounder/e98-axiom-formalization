@@ -141,4 +141,85 @@ lemma lines_through_two_points_le_one {L : Finset (Set (ℝ × ℝ))}
   have : p = q := hsub ⟨hp₁, hp₂⟩ ⟨hq₁, hq₂⟩
   exact hpq this
 
+/-- The crossing-lemma endgame, geometry-free. From the crossing lemma `hCL`
+and the incidence bookkeeping of a drawn multigraph `G` (vertices = the `m`
+points, `e := G.numEdges ≥ I - n`, multiplicity `≤ 1`, `crossings ≤ n²`),
+derive the Szemerédi–Trotter incidence bound for `I` against `m` points and
+`n` lines. Reused verbatim by Theorem 2.3 with `M ≥ 1`.
+
+The constant `64` is pinned: in the high-edge regime the crossing lemma gives
+`e³ ≤ 64·m²·n²`, so `e ≤ (64·m²·n²)^{1/3} = 4·m^{2/3}·n^{2/3}`, and `I ≤ e + n`
+slots under `64·(m^{2/3}n^{2/3} + m + n)` with room to spare; in the low-edge
+regime `I < 4m + n ≤ 64·(m + n)`. -/
+lemma incidence_bound_of_crossingLemma
+    (hCL : CrossingLemmaMultigraphStatement)
+    (I m n : ℕ) (G : DrawnMultigraph)
+    (hv : G.V.card = m)
+    (hmult : ∀ p q, G.multiplicity p q ≤ 1)
+    (hwd : G.WellDrawn)
+    (he : I ≤ G.numEdges + n)
+    (hcr : G.crossings ≤ n ^ 2) :
+    (I : ℝ) ≤
+      64 * ((m : ℝ) ^ ((2 : ℝ) / 3) * (n : ℝ) ^ ((2 : ℝ) / 3) + m + n) := by
+  -- Standing nonnegativity facts for the final arithmetic.
+  have hm0 : (0 : ℝ) ≤ (m : ℝ) := Nat.cast_nonneg m
+  have hn0 : (0 : ℝ) ≤ (n : ℝ) := Nat.cast_nonneg n
+  have hmr : (0 : ℝ) ≤ (m : ℝ) ^ ((2 : ℝ) / 3) := Real.rpow_nonneg hm0 _
+  have hnr : (0 : ℝ) ≤ (n : ℝ) ^ ((2 : ℝ) / 3) := Real.rpow_nonneg hn0 _
+  have hprod : (0 : ℝ) ≤ (m : ℝ) ^ ((2 : ℝ) / 3) * (n : ℝ) ^ ((2 : ℝ) / 3) :=
+    mul_nonneg hmr hnr
+  by_cases hthr : 4 * 1 * G.V.card ≤ G.numEdges
+  · -- High-edge regime: the crossing lemma applies.
+    have hcl := hCL G 1 (by norm_num) hmult hwd hthr
+    -- `e³ ≤ 64·m²·crossings ≤ 64·m²·n²`, in ℕ.
+    have hcubeNat : G.numEdges ^ 3 ≤ 64 * m ^ 2 * n ^ 2 := by
+      have h1 : G.numEdges ^ 3 ≤ 64 * 1 * m ^ 2 * G.crossings := by
+        rw [hv] at hcl; exact hcl
+      calc G.numEdges ^ 3 ≤ 64 * 1 * m ^ 2 * G.crossings := h1
+        _ = 64 * m ^ 2 * G.crossings := by ring
+        _ ≤ 64 * m ^ 2 * n ^ 2 := by
+            exact Nat.mul_le_mul_left _ hcr
+    -- Cast to ℝ.
+    have hcubeR : (G.numEdges : ℝ) ^ 3 ≤ 64 * (m : ℝ) ^ 2 * (n : ℝ) ^ 2 := by
+      have := (Nat.cast_le (α := ℝ)).mpr hcubeNat
+      push_cast at this
+      linarith [this]
+    -- Identify the cube-root bound `B := 4·m^{2/3}·n^{2/3}` via `B³ = 64·m²·n²`.
+    set B : ℝ := 4 * (m : ℝ) ^ ((2 : ℝ) / 3) * (n : ℝ) ^ ((2 : ℝ) / 3) with hB
+    have hBnonneg : (0 : ℝ) ≤ B := by
+      rw [hB]; positivity
+    have hBcube : B ^ 3 = 64 * (m : ℝ) ^ 2 * (n : ℝ) ^ 2 := by
+      have e1 : ((m : ℝ) ^ ((2 : ℝ) / 3)) ^ (3 : ℕ) = (m : ℝ) ^ (2 : ℕ) := by
+        rw [← Real.rpow_natCast ((m : ℝ) ^ ((2 : ℝ) / 3)) 3, ← Real.rpow_mul hm0]
+        norm_num
+      have e2 : ((n : ℝ) ^ ((2 : ℝ) / 3)) ^ (3 : ℕ) = (n : ℝ) ^ (2 : ℕ) := by
+        rw [← Real.rpow_natCast ((n : ℝ) ^ ((2 : ℝ) / 3)) 3, ← Real.rpow_mul hn0]
+        norm_num
+      rw [hB]
+      calc (4 * (m : ℝ) ^ ((2 : ℝ) / 3) * (n : ℝ) ^ ((2 : ℝ) / 3)) ^ 3
+          = 4 ^ (3 : ℕ) * ((m : ℝ) ^ ((2 : ℝ) / 3)) ^ (3 : ℕ)
+              * ((n : ℝ) ^ ((2 : ℝ) / 3)) ^ (3 : ℕ) := by ring
+        _ = 64 * (m : ℝ) ^ 2 * (n : ℝ) ^ 2 := by rw [e1, e2]; norm_num
+    -- Take cube roots: `e ≤ B`.
+    have hcubeB : (G.numEdges : ℝ) ^ 3 ≤ B ^ 3 := by rw [hBcube]; exact hcubeR
+    have heB : (G.numEdges : ℝ) ≤ B :=
+      le_of_pow_le_pow_left₀ (by norm_num) hBnonneg hcubeB
+    -- Assemble: `I ≤ e + n ≤ B + n ≤ 64·(m^{2/3}n^{2/3} + m + n)`.
+    have heI : (I : ℝ) ≤ (G.numEdges : ℝ) + n := by
+      have := (Nat.cast_le (α := ℝ)).mpr he
+      push_cast at this
+      linarith [this]
+    rw [hB] at heB
+    nlinarith [heI, heB, hprod, hmr, hnr, hm0, hn0]
+  · -- Low-edge regime: `e < 4m`, so `I < 4m + n ≤ 64·(m + n)`.
+    push_neg at hthr
+    rw [hv] at hthr
+    -- `hthr : G.numEdges < 4 * 1 * m`, hence `I ≤ 4·m + n - 1 < 4·m + n`.
+    have heINat : I ≤ 4 * m + n := by omega
+    have heIR : (I : ℝ) ≤ 4 * (m : ℝ) + (n : ℝ) := by
+      have := (Nat.cast_le (α := ℝ)).mpr heINat
+      push_cast at this
+      linarith [this]
+    nlinarith [heIR, hprod, hmr, hnr, hm0, hn0]
+
 end PachSharir.ST
