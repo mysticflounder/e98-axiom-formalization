@@ -1,0 +1,28 @@
+name = "incidence-assembly"
+defaultTargets = ["IncidenceAssembly"]
+
+# Project-specific wiring (NOT a paper module). This module assembles the closed
+# Pach--de Zeeuw Theorem 1.1 from the paper-faithful sibling modules: it bridges
+# pach-sharir's Corollary 2.4 to pdz's open incidence hypothesis (the §3
+# incidence assembly, Lemmas 3.2--3.7) and exposes the hypothesis-free theorem.
+# Pinned to v4.27.0 to match the sibling modules.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+# The Pach--de Zeeuw Theorem 1.1 reduction chain (paper module). Provides the
+# conditional Theorem 1.1 and the open incidence-card statement we discharge.
+[[require]]
+name = "pdz"
+path = "../pdz"
+
+# The Pach--Sharir incidence bound (paper module). Provides Theorem 2.3 and
+# Corollary 2.4, the input the §3 assembly reduces to.
+[[require]]
+name = "pach-sharir"
+path = "../pach-sharir"
+
+[[lean_lib]]
+name = "IncidenceAssembly"
+srcDir = "."

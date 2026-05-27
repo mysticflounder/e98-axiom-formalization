@@ -5,7 +5,6 @@ Authors: Adam McKenna
 -/
 
 import PachDeZeeuw.Theorem12
-import PachDeZeeuw.IncidenceBound
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.SDiff
 import Mathlib.Tactic
@@ -139,14 +138,8 @@ theorem theorem11_irreducibleCurve_distinctDistances
       hP₂ := hP₂sub
       notExceptional := hnotExceptional
       assumption31 :=
-        { noVerticalComponent₁ := True
-          noVerticalComponent₂ := True
-          pointSetsDisjoint := by
-            simpa using hdisj
-          sparseParallelFibers := True
-          sparseOrthogonalFibers := True
-          sparseConcentricFibers := True
-          noExceptionalPair := hnotExceptional } }
+        assumption31Data_of_not_controlledDegenerate hnot hnot
+          (by simpa using hdisj) hnotExceptional }
   have hsum : E.card = P₁.card + P₂.card := by
     rw [← hunion, Finset.card_union_of_disjoint hdisj]
   have hcmp₁_finset : P₁.card ≤ 2 * P₂.card := by
@@ -197,22 +190,5 @@ theorem theorem11_irreducibleCurve_distinctDistances
         Nat.mul_le_mul_left 81 hbound
     _ = (81 * C) * (distinctDistances E) ^ 3 := by
       simp [Nat.mul_assoc]
-
-/--
-Pach–de Zeeuw Theorem 1.1 as a **closed** (hypothesis-free) statement, for
-downstream consumption.
-
-The entire reduction chain is proven; the one remaining gap is the Pach–Sharir
-incidence input `PositiveAuxiliaryIncidenceCardBoundStatement`, supplied here by
-`sorry` pending its formalization (the `pach-sharir`, `bezout`, `milnor-thom`,
-and `curve-symmetries` sibling modules). The `sorry` is localized to exactly
-that hypothesis, so `#print axioms` pinpoints the single hole rather than
-blanking the whole theorem.
--/
-theorem theorem11_irreducibleCurve_distinctDistances_unconditional :
-    PachDeZeeuwIrreducibleCurveDistinctDistancesStatement :=
-  theorem11_irreducibleCurve_distinctDistances
-    (theorem12_bipartiteDistinctDistances_of_positiveCardBound
-      (sorry : PositiveAuxiliaryIncidenceCardBoundStatement))
 
 end PachDeZeeuw.PDZ

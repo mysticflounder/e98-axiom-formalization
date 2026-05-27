@@ -110,16 +110,100 @@ lemma ExceptionalCurvePair.right_controlledDegenerate {C₁ C₂ : Set Point2}
   · exact OrthogonalLinePair.right_controlledDegenerate h
   · exact ConcentricCirclePair.right_controlledDegenerate h
 
-/-- Assumption 3.1 normalization data from Pach--de Zeeuw. -/
+/-- A vertical line `{p | p₀ = c}` (Pach--de Zeeuw, Assumption 3.1.1). -/
+def IsVerticalLine (C : Set Point2) : Prop :=
+  ∃ c : ℝ, C = {p : Point2 | p 0 = c}
+
+/-- Assumption 3.1.3 for one curve: if `C` is a circle, its center is not a
+point of `P` — the *other* curve's point set (`S₂` for `C₁`, `S₁` for `C₂`). -/
+def CircleCenterNotIn (C : Set Point2) (P : Finset Point2) : Prop :=
+  ∀ (center : Point2) (r : ℝ), C = Metric.sphere center r → center ∉ (P : Set Point2)
+
+/-- Assumption 3.1.4 for one curve: if `C` is a circle with center `o`, then
+every concentric circle `sphere o ρ` meets `P` in at most one point. -/
+def ConcentricFibersSparse (C : Set Point2) (P : Finset Point2) : Prop :=
+  ∀ (center : Point2) (r : ℝ), C = Metric.sphere center r →
+    ∀ ρ : ℝ, ((P : Set Point2) ∩ Metric.sphere center ρ).Subsingleton
+
+/-- Assumption 3.1.5 for one curve: if `C` is the line `a x + b y = c`, then the
+union of any parallel line `a x + b y = c'` with its reflection in `C`
+(the line `a x + b y = 2c - c'`) meets `P` in at most one point. -/
+def ParallelReflectionFibersSparse (C : Set Point2) (P : Finset Point2) : Prop :=
+  ∀ a b c : ℝ, (a, b) ≠ (0, 0) → C = lineSet a b c →
+    ∀ c' : ℝ,
+      ((P : Set Point2) ∩ (lineSet a b c' ∪ lineSet a b (2 * c - c'))).Subsingleton
+
+/-- Assumption 3.1.6 for one curve: if `C` is a line, then every orthogonal line
+meets `P` in at most one point. Orthogonality `a a' + b b' = 0` is the same
+relation used by `OrthogonalLinePair`. -/
+def OrthogonalFibersSparse (C : Set Point2) (P : Finset Point2) : Prop :=
+  ∀ a b c : ℝ, (a, b) ≠ (0, 0) → C = lineSet a b c →
+    ∀ a' b' c' : ℝ, a * a' + b * b' = 0 →
+      ((P : Set Point2) ∩ lineSet a' b' c').Subsingleton
+
+/-- Assumption 3.1 normalization data from Pach--de Zeeuw. Each field is one of
+the six numbered conditions; the conditions that single out one curve (resp. the
+other) are recorded per curve, with the constrained point set being the *other*
+curve's set (`S₂` for `C₁`, `S₁` for `C₂`), exactly as in the paper. -/
 structure Assumption31Data
     (C₁ C₂ : Set Point2) (P₁ P₂ : Finset Point2) where
-  noVerticalComponent₁ : Prop
-  noVerticalComponent₂ : Prop
+  /-- (3.1.1) `C₁` is not a vertical line. -/
+  noVerticalComponent₁ : ¬ IsVerticalLine C₁
+  /-- (3.1.1) `C₂` is not a vertical line. -/
+  noVerticalComponent₂ : ¬ IsVerticalLine C₂
+  /-- (3.1.2) The point sets are disjoint. -/
   pointSetsDisjoint : Disjoint (P₁ : Set Point2) (P₂ : Set Point2)
-  sparseParallelFibers : Prop
-  sparseOrthogonalFibers : Prop
-  sparseConcentricFibers : Prop
+  /-- (3.1.3) If `C₁` (resp. `C₂`) is a circle, its center is not in the other
+  curve's point set. -/
+  circleCenterNotInPointSet :
+    CircleCenterNotIn C₁ P₂ ∧ CircleCenterNotIn C₂ P₁
+  /-- (3.1.4) If `C₁` (resp. `C₂`) is a circle, concentric circles are sparse in
+  the other curve's point set. -/
+  sparseConcentricFibers :
+    ConcentricFibersSparse C₁ P₂ ∧ ConcentricFibersSparse C₂ P₁
+  /-- (3.1.5) If `C₁` (resp. `C₂`) is a line, parallel-line/reflection unions are
+  sparse in the other curve's point set. -/
+  sparseParallelFibers :
+    ParallelReflectionFibersSparse C₁ P₂ ∧ ParallelReflectionFibersSparse C₂ P₁
+  /-- (3.1.6) If `C₁` (resp. `C₂`) is a line, orthogonal lines are sparse in the
+  other curve's point set. -/
+  sparseOrthogonalFibers :
+    OrthogonalFibersSparse C₁ P₂ ∧ OrthogonalFibersSparse C₂ P₁
+  /-- The pair is not parallel lines, orthogonal lines, or concentric circles. -/
   noExceptionalPair : ¬ ExceptionalCurvePair C₁ C₂
+
+/-- When neither curve is a line or a circle, every conditional clause of
+Assumption 3.1 (parts 1, 3–6) is vacuously true, so the data is determined by
+disjointness of the point sets and the curves not forming an exceptional pair.
+This is the situation in the proof of Theorem 1.1, where the curve is excluded
+from being a line or circle. -/
+lemma assumption31Data_of_not_controlledDegenerate {C₁ C₂ : Set Point2}
+    {P₁ P₂ : Finset Point2}
+    (h₁ : ¬ External.IsControlledDegenerate C₁)
+    (h₂ : ¬ External.IsControlledDegenerate C₂)
+    (hdisj : Disjoint (P₁ : Set Point2) (P₂ : Set Point2))
+    (hexc : ¬ ExceptionalCurvePair C₁ C₂) :
+    Assumption31Data C₁ C₂ P₁ P₂ where
+  noVerticalComponent₁ := by
+    rintro ⟨c, hc⟩
+    exact h₁ (Or.inl ⟨1, 0, c, by simp, by rw [hc]; ext p; simp⟩)
+  noVerticalComponent₂ := by
+    rintro ⟨c, hc⟩
+    exact h₂ (Or.inl ⟨1, 0, c, by simp, by rw [hc]; ext p; simp⟩)
+  pointSetsDisjoint := hdisj
+  circleCenterNotInPointSet :=
+    ⟨fun center r hsphere => absurd (Or.inr ⟨center, r, hsphere⟩) h₁,
+     fun center r hsphere => absurd (Or.inr ⟨center, r, hsphere⟩) h₂⟩
+  sparseConcentricFibers :=
+    ⟨fun center r hsphere => absurd (Or.inr ⟨center, r, hsphere⟩) h₁,
+     fun center r hsphere => absurd (Or.inr ⟨center, r, hsphere⟩) h₂⟩
+  sparseParallelFibers :=
+    ⟨fun a b c hab hline => absurd (Or.inl ⟨a, b, c, hab, hline⟩) h₁,
+     fun a b c hab hline => absurd (Or.inl ⟨a, b, c, hab, hline⟩) h₂⟩
+  sparseOrthogonalFibers :=
+    ⟨fun a b c hab hline => absurd (Or.inl ⟨a, b, c, hab, hline⟩) h₁,
+     fun a b c hab hline => absurd (Or.inl ⟨a, b, c, hab, hline⟩) h₂⟩
+  noExceptionalPair := hexc
 
 /--
 Prepared bipartite input satisfying the normalizations of Assumption 3.1:

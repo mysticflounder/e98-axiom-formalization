@@ -14,11 +14,14 @@ the larger proof consumes.
 | [`milnor-thom`](milnor-thom/) | The Oleĭnik–Petrovskiĭ / Milnor / Thom bound — a real zero set in `ℝ^D` from degree-`≤d` polynomials has `≤ (2d)^D` connected components (Pach–de Zeeuw Thm 2.2). | Mathlib only |
 | [`curve-symmetries`](curve-symmetries/) | Symmetries of plane curves — `≤ 4d` symmetries unless a line/circle, and the affine maps fixing a conic (Pach–de Zeeuw §2.3, Lemmas 2.5–2.6). | Mathlib + `bezout` |
 | [`pach-sharir`](pach-sharir/) | The Pach–Sharir incidence bound for points and bounded-degree algebraic curves with two degrees of freedom (Pach–de Zeeuw Thm 2.3). | Mathlib + `crossing-lemma` |
-| [`pdz`](pdz/) | Pach–de Zeeuw **Theorem 1.1** — distinct distances on a plane algebraic curve (`n^{4/3}` lower bound, no line/circle). | Mathlib + `crossing-lemma` |
+| [`pdz`](pdz/) | Pach–de Zeeuw **Theorem 1.1** — distinct distances on a plane algebraic curve (`n^{4/3}` lower bound, no line/circle). Paper module; `sorry`-free, conditional on the open incidence hypothesis. | Mathlib + `crossing-lemma` |
+| [`incidence-assembly`](incidence-assembly/) | **Project wiring, not a paper module.** Assembles the closed Theorem 1.1 by bridging `pach-sharir`'s Corollary 2.4 to `pdz`'s open incidence hypothesis (the §3 assembly, Lemmas 3.2–3.7). | Mathlib + `pdz` + `pach-sharir` |
 
 The dependency spine: `crossing-lemma` → `pach-sharir` (Szemerédi–Trotter-type
-incidence bound) → `pdz` (reduces Theorem 1.1 to a specialization of that bound).
-Each arrow is a local-path `require`.
+incidence bound) → `pdz` (reduces Theorem 1.1 to a specialization of that bound)
+→ `incidence-assembly` (closes the theorem from the paper modules). Each arrow is
+a local-path `require`. The paper modules state theorems verbatim; all
+project-specific glue lives in `incidence-assembly`.
 
 `bezout`, `milnor-thom`, and `curve-symmetries` are the paper's §2
 algebraic-geometry inputs (Theorems 2.1, 2.2 and Lemmas 2.5–2.6). They are the

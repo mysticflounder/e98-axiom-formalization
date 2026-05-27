@@ -3,6 +3,7 @@ Copyright (c) 2026 Adam McKenna. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Authors: Adam McKenna
 -/
+import PachSharir.Theorem23
 
 /-!
 # The Pach–Sharir incidence bound
