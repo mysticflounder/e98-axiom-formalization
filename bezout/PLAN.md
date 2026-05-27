@@ -91,5 +91,7 @@ excluded from every build. Their correctness is unverified until built here.
 
 ## Status
 
-Scaffold only (lakefile, toolchain, build script, root aggregator). No statements
-or proofs yet.
+Statement surface written and building green: `Bezout21Statement` (with the
+`realZeroSet` / `NoCommonComponent` vocabulary) states Theorem 2.1 as the named
+interface. The discharging term (the resultant-based proof above) is still
+pending; `Audit.lean` is not yet present.

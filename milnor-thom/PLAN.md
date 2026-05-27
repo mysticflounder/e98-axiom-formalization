@@ -82,5 +82,8 @@ the paper letters it **2.2**. {{UNVALIDATED}} — none of it has been elaborated
 
 ## Status
 
-Scaffold only (lakefile, toolchain, build script, root aggregator). No statements
-or proofs yet.
+Statement surface written and building green: `MilnorThom22Statement` (the
+connected-components bound) and `MilnorThom22FiniteStatement` (the finite-set
+corollary `pdz` consumes), over the `realZeroSet` vocabulary. The discharging
+term is still pending; per the design decision above this is expected to be the
+axiomatized (route 1) form, with `Audit.lean` to follow.

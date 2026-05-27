@@ -101,5 +101,10 @@ is unverified until built here.
 
 ## Status
 
-Scaffold only (lakefile, toolchain, build script, root aggregator). No statements
-or proofs yet.
+Statement surface written and building green: `Lemma25Statement` (the ≤ `4d`
+symmetry bound, with the literal constant the paper states) and `Lemma26Statement`
+(the conic-stabilizer normal-form classification, with its full `ConicModel` /
+`ConicNormalFormData` / `ConicStabilizerNormalForm` apparatus ported and
+re-lettered from the attic's mis-numbered 2.5–2.7). The discharging terms (which
+invoke Theorem 2.1 from `bezout`, and the plane-isometry trichotomy / conic
+normalization) are still pending; `Audit.lean` is not yet present.
