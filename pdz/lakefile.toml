@@ -1,0 +1,20 @@
+name = "pdz"
+defaultTargets = ["PachDeZeeuw"]
+
+# Distinct distances on algebraic curves (Pach--de Zeeuw), Theorem 1.1 lane.
+# Standalone: depends only on Mathlib. Pinned to v4.27.0 to match the
+# formal-conjectures toolchain, so the work re-upstreams without a port.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.27.0"
+
+# The crossing lemma / incidence bound, developed as a self-contained sibling
+# project. pdz imports it to discharge PositiveAuxiliaryIncidenceCardBoundStatement.
+[[require]]
+name = "crossing-lemma"
+path = "../crossing-lemma"
+
+[[lean_lib]]
+name = "PachDeZeeuw"
+srcDir = "."

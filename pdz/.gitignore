@@ -1,0 +1,5 @@
+/.lake/
+.fastembed_cache/
+.claude/
+# Verbatim source paper text (Pach-de Zeeuw); not republished here.
+pdz.txt
