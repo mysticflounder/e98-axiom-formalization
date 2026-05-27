@@ -30,7 +30,9 @@ lake exe cache get      # fetch Mathlib oleans once
 
 Work in progress — scaffold only. This is the single hardest of the three
 algebraic-geometry inputs: Mathlib has **no** semialgebraic / real-algebraic
-component theory today. See `PLAN.md` for the design choice (axiomatize the
+component theory today (validated 2026-05 against the v4.27.0 checkout — also no
+Morse theory and no Sard's theorem; Sard exists only as the paused external WIP
+`fpvandoorn/sard`). See `PLAN.md` for the design choice (axiomatize the
 component bound as a typed interface, per `../pdz/SCOPE.md`'s Tier-B treatment,
 vs. attempt the finite-set corollary via complex Bézout + dimension) — this is
 an open policy decision.

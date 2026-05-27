@@ -37,10 +37,22 @@ f, g ∈ ℝ[x][y] with no common factor
                                                               reduction)
 ```
 
-Mathlib has `RingTheory/Polynomial/Resultant`; the specialization
-`Res(f,g) = 0 ⇔ common factor` and the degree bound are the load-bearing inputs.
-See Open Question 1 in `../pdz/SCOPE.md` — whether that file delivers them
-cleanly swings this module between medium and large.
+**Mathlib already supplies the resultant substrate** (validated against the
+v4.27.0 checkout, 2026-05): `RingTheory/Polynomial/Resultant/Basic.lean` provides
+
+- `resultant_ne_zero [IsDomain R] (f g) (IsCoprime f g) : resultant f g ≠ 0` —
+  the "coprime ⇒ nonzero resultant" direction;
+- `resultant_map_map (φ : R →+* S)` — resultant commutes with ring-hom
+  specialization, i.e. the fibre-evaluation bridge `Res_y(f,g)(x₀) = Res(f(x₀,·), g(x₀,·))`;
+- `resultant_mul_left/right`, `resultant_prod_left/right` — multiplicativity;
+- `resultant_eq_prod_roots_sub`, and the Sylvester map `sylvesterMap`/`adjSylvester`
+  (the Bézout identity `a·f + b·g = Res`).
+
+So the work is **not** building resultant theory; it is the bivariate-over-`ℝ[x]`
+plumbing: viewing `f, g ∈ ℝ[x][y]`, getting `Res_y(f,g) ∈ ℝ[x]` nonzero from a
+no-common-factor hypothesis, the fibre count, and the no-common-component
+reduction. On this API the module is **medium**, not large (see `../pdz/SCOPE.md`
+Open Question 1, now answered).
 
 ## Seed material
 

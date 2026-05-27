@@ -27,9 +27,22 @@ The component bound repairs this and is irreplaceable in Lemma 3.3.
 
 ## Difficulty / design decision
 
-This is the hardest of the three algebraic-geometry inputs. Per
-`../pdz/SCOPE.md` (Tier B, item 2.2): **Mathlib has no semialgebraic theory at
-all** — no Oleĭnik–Petrovskiĭ–Milnor–Thom, no real-algebraic component counting.
+This is the hardest of the three algebraic-geometry inputs. **Validated against
+the Mathlib v4.27.0 checkout (2026-05):** the entire classical proof route is
+unsupported —
+
+- **no semialgebraic / real-algebraic-geometry layer** (no `Semialgebraic`, no
+  cylindrical algebraic decomposition, no Oleĭnik–Petrovskiĭ–Milnor–Thom);
+- **no Morse theory** (no Morse lemma, no "components ≤ critical points", no
+  Morse inequalities);
+- **no Sard's theorem.** Sard exists only as an external, currently *paused* WIP
+  repo, [`fpvandoorn/sard`](https://github.com/fpvandoorn/sard) ("the hard part
+  hasn't been started"), so it cannot be leaned on; some groundwork
+  (`MeasureZero`, manifold charts) is being upstreamed piecemeal.
+
+Even the finite-set corollary needs a notion of *variety degree* + complex
+Bézout for the point count, which Mathlib also lacks (it has resultants and
+Krull dimension, but no variety-degree API). This strongly favours route 1.
 
 Two routes:
 

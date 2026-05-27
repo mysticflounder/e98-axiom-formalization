@@ -38,13 +38,22 @@ classify isometries of ℝ²  (rotation / translation / glide reflection)
    →  reflections: ≤ 2d by composition with a fixed reflection
    →  total ≤ 4d unless line or circle
 ```
-Mathlib gives the `SO(2)` classification and Mazur–Ulam (affine isometries);
-Bézout's inequality is imported from the sibling `bezout` module.
+Mathlib support (validated against the v4.27.0 checkout, 2026-05): Mazur–Ulam
+and the orthogonal-group / `LinearIsometryEquiv` building blocks are present, but
+the **plane-isometry trichotomy** (every isometry of `ℝ²` is a rotation,
+translation, or glide reflection) is *not* packaged — the attic had to build it
+(`classify_plane_isometry`, `orientationReversing_affine_is_reflection_or_glide`),
+so that classification is real work to be revived/rewritten here. Bézout's
+inequality is imported from the sibling `bezout` module.
 
 **Lemma 2.6** (real-conic normal forms): reduce the conic to a normal form via a
-rotation/translation (`QuadraticForm` + Sylvester / principal axes), then match
-coefficients to read off which affine `T` can fix it. Heavy but elementary
-symbolic algebra (`ring` / `linear_combination`).
+rotation/translation, then match coefficients to read off which affine `T` can
+fix it. Heavy but elementary symbolic algebra (`ring` / `linear_combination`).
+The normalization step is *supported*: `LinearAlgebra/QuadraticForm/Real.lean`
+gives Sylvester's law of inertia (`isometryEquivSignWeightedSumSquares`,
+`equivalent_signType_weighted_sum_squared`, `equivalent_one_zero_neg_one_…`),
+validated present in v4.27.0 — enough to diagonalize the quadratic part to
+sign-weighted sum-of-squares and read off ellipse/hyperbola/parabola.
 
 ## Dependency on Bézout
 

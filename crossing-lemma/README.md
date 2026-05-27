@@ -99,7 +99,9 @@ mechanical removal of project-specific namespace dependencies.
 (combinatorial maps / planar-graph definitions not yet in the pinned Mathlib
 `v4.27.0`), © 2024 **Kyle Miller, Rida Hamadani**, under Apache 2.0. Its original
 copyright header is preserved in the file. It will be removed in favour of the
-upstream module once a Mathlib release including #16074 is pinned.
+upstream module once a Mathlib release including #16074 is pinned. (#16074 was
+still open and active as of 2026-05-26 — verified via `gh` — so the vendored copy
+remains necessary for now.)
 
 All other files are © Adam McKenna. The whole repository is licensed under the
 Apache License 2.0 — see [`LICENSE`](LICENSE).

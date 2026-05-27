@@ -27,10 +27,14 @@ lake exe cache get      # fetch Mathlib oleans once
 
 ## Status
 
-Work in progress — scaffold only. See `PLAN.md` for the resultant-based proof
-route. A partial development (resultant specialization, fiber-cardinality
-bounds, an irreducible-pair intersection bound) already exists, quarantined, in
-`../pdz/attic/AlgebraicPrelim.lean` and is the natural seed for this module.
+Work in progress — scaffold only. This is the **least-blocked** of the §2
+algebraic-geometry inputs: Mathlib's `RingTheory/Polynomial/Resultant` already
+supplies the core resultant API (`resultant_ne_zero` for coprime pairs,
+specialization, multiplicativity, the Sylvester map) — validated present in
+v4.27.0 — so only the bivariate-over-`ℝ[x]` plumbing remains. See `PLAN.md` for
+the proof route. A partial development (resultant specialization,
+fiber-cardinality bounds, an irreducible-pair intersection bound) already exists,
+quarantined, in `../pdz/attic/AlgebraicPrelim.lean` and is the natural seed.
 
 ## License
 

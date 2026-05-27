@@ -85,7 +85,7 @@ The work cleanly separates into two tiers. **This split is the central scoping d
 
 | # | Input | Used by | In Mathlib? | If built from scratch |
 |---|-------|---------|-------------|----------------------|
-| 2.1 | **Bézout inequality** (real affine plane, ≤ d₁d₂ unless common component) | 2.5, 3.6, 4.1–4.4 | No (only Bézout *rings*). Resultant theory partially present. | **Medium–Large** (resultant route; classical) |
+| 2.1 | **Bézout inequality** (real affine plane, ≤ d₁d₂ unless common component) | 2.5, 3.6, 4.1–4.4 | Statement no, but **resultant theory present** (`RingTheory/Polynomial/Resultant`, validated v4.27.0: `resultant_ne_zero`/coprime, `resultant_map_map`, multiplicativity, Sylvester map). | **Medium** (resultant route on the existing API) |
 | 2.2 | **Milnor–Thom / Oleinik–Petrovskii** component bound `(2d)^D` | 3.3 | No. No semialgebraic theory at all. | **Research-grade**. Paper only needs the finite-set corollary `≤(2d)^D points`, possibly reachable via complex Bézout+dim — still large. |
 | 2.3 / 2.4 | **Pach–Sharir incidence bound** (curves, k DOF) + higher-dim projection | 3.5 | **No — none.** Not even Szemerédi–Trotter. | **Research-grade / multi-person-year.** Biggest blocker. |
 | — | Degree of a variety + **Bézout–Heintz** product bound | 3.3 | No notion of variety degree. | **Large–research-grade** |
@@ -181,22 +181,36 @@ contributions on their own timelines.
 - **R4 (conic algebra volume).** Lemmas 2.6 & 4.3 are long explicit polynomial
   computations; tedious but not deep. Risk is time, not feasibility.
 
-## 6. Open questions (resolve before locking a plan)
+## 6. Open questions (validated 2026-05 against the v4.27.0 checkout)
 
-Upgrade these from `grep`-confidence to elaborator-confidence (run live `#find`/loogle or
-the DB-backed Mathlib index):
+These were at `grep`-confidence over an early-2026 checkout; the answers below are now
+checkout-validated against Mathlib `v4.27.0` (the pinned toolchain). Re-confirm at the
+elaborator level before leaning hard on any one lemma.
 
-1. Does `RingTheory/Polynomial/Resultant/Basic.lean` give `Res(f,g)=0 ⇔ common factor`
-   and degree bounds? — swings real Bézout between medium and large.
+1. **Resultant API — ANSWERED, YES.** `RingTheory/Polynomial/Resultant/Basic.lean` is
+   present and rich: `resultant_ne_zero [IsDomain R] (IsCoprime f g)`, `resultant_map_map`
+   (specialization under ring homs — the fibre-evaluation bridge), `resultant_mul_*` /
+   `resultant_prod_*` (multiplicativity), `resultant_eq_prod_roots_sub`, and the Sylvester
+   map `sylvesterMap`/`adjSylvester`. Real Bézout (Theorem 2.1) is therefore a **medium**
+   build on this substrate, not a large one — see the `../../bezout` module.
 2. Is "`A ⊗_K B` is a domain for `A,B` domains over a field" reachable from the
    `Geometrically/Integral` + `LinearDisjoint` + `Flat/Domain` cluster? — swings the
-   product-irreducibility step in Lemma 3.3.
-3. Is `topologicalKrullDim`/`zeroLocus` connected to `Krull dim ℂ[x]/I` with usable API?
-   — determines whether the dim-drop in 3.3 is a small wrapper over the (present) Krull
-   height theorem or a medium build.
-4. Does `QuadraticForm` + Sylvester reach real-conic reduction cleanly? — swings Lemma 2.6.
+   product-irreducibility step in Lemma 3.3. **Not yet re-validated.**
+3. **Krull dimension — ANSWERED, mostly.** `RingTheory/KrullDimension/*` is extensive
+   (Basic, Regular, NonZeroDivisors, Field, PID, …), with `Topology/KrullDimension.lean`
+   and `Spectrum/Prime/Topology` (`zeroLocus`). The dim-drop in 3.3 is a plausibly-small
+   wrapper, modulo confirming the `Krull dim ℂ[x]/I` ↔ `zeroLocus` connection at the
+   elaborator level.
+4. **QuadraticForm/Sylvester — ANSWERED, YES.** `LinearAlgebra/QuadraticForm/Real.lean`
+   gives Sylvester's law of inertia (`isometryEquivSignWeightedSumSquares`,
+   `equivalent_signType_weighted_sum_squared`, `equivalent_one_zero_neg_one_…`). Real-conic
+   reduction for Lemma 2.6 is reachable — see `../../curve-symmetries`.
 5. **Policy decision (needs Adam):** axiomatize Tier B (recommended) vs. attempt to prove
-   any of it. {{NEEDS_ADAM_INPUT}}
+   any of it. {{NEEDS_ADAM_INPUT}} — note the validation sharpens this: 2.1 (Bézout) is now
+   clearly *provable* on the resultant API, whereas 2.2 (Milnor–Thom) remains genuinely
+   blocked (no Sard/Morse/semialgebraic in Mathlib; Sard exists only as a paused external
+   WIP, `fpvandoorn/sard`), and 2.3 (Pach–Sharir) needs the whole crossing→ST→incidence
+   chain built here.
 
 ## 7. Bottom line (Theorem 1.1 target)
 

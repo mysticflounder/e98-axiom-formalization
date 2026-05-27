@@ -39,8 +39,20 @@ multigraph crossing lemma  (crossing-lemma module)
    →  Pach–Sharir bound for 2-d.o.f. bounded-degree curve systems (Theorem 2.3)
 ```
 
-Mathlib has Szemerédi–Trotter for *lines*; the work here is the curve
-generalization under the 2-d.o.f. / multiplicity-`M` hypothesis.
+**Validated against the Mathlib v4.27.0 checkout (2026-05):** Mathlib has **no**
+Szemerédi–Trotter and no incidence geometry at all — the only "Szemerédi" in the
+library is the regularity lemma / Ruzsa–Szemerédi, which is unrelated. So even
+the line case is *not* a freebie; the whole chain (crossing lemma → ST → curve
+generalization) is built here, under the 2-d.o.f. / multiplicity-`M` hypothesis.
+The crossing inequality itself lives in the sibling `crossing-lemma` module (also
+not upstream).
+
+Upstream status worth tracking: Mathlib PR
+[#16074](https://github.com/leanprover-community/mathlib4/pull/16074)
+("feat: combinatorial maps and planar graphs", open as of 2026-05-26) is the
+planarity / combinatorial-map substrate that `crossing-lemma` currently vendors.
+If it lands, the planar-drawing foundation can be de-vendored — but it supplies
+neither ST nor the point/curve incidence argument, which remain bespoke.
 
 ## Statement surface (to design)
 
