@@ -770,4 +770,27 @@ lemma stMultigraph_wellDrawn (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × 
   -- substantive blockers; W2 and W4's arithmetic tail are routine once W1/W3 land.
   sorry
 
+/-- **Szemerédi–Trotter**, conditional on the multigraph crossing lemma `hCL`.
+
+Assembled from the Phase-1 combinatorial core `incidence_bound_of_crossingLemma`
+and the geometric realization `stMultigraph` with its five discharged hypotheses.
+Four of those — `stMultigraph_card_V`, `stMultigraph_multiplicity_le_one`,
+`incidences_le_numEdges_add`, `stMultigraph_crossings_le` — are sorry-free;
+`stMultigraph_wellDrawn` carries the single labelled geometric residual
+(`crossingCount ≤ |L|²`). So this is Szemerédi–Trotter conditional on `hCL` **and**
+that one geometric bound; the `hCL` hypothesis threads the crossing lemma at the
+type level (not via `sorryAx`). -/
+theorem szemerediTrotter_of_crossingLemma
+    (hCL : CrossingLemmaMultigraphStatement) :
+    SzemerediTrotterStatement := by
+  refine ⟨64, by norm_num, ?_⟩
+  intro P L hL
+  exact incidence_bound_of_crossingLemma hCL
+    (incidences P L) P.card L.card (stMultigraph P L)
+    (stMultigraph_card_V P L)
+    (stMultigraph_multiplicity_le_one P L hL)
+    (stMultigraph_wellDrawn P L hL)
+    (incidences_le_numEdges_add P L hL)
+    (stMultigraph_crossings_le P L)
+
 end PachSharir.ST
