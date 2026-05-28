@@ -449,4 +449,325 @@ noncomputable def stMultigraph
   arc := fun i => segmentArc ((allEdges P L)[i].1).1 ((allEdges P L)[i].1).2 (allEdges P L)[i].2
   crossings := L.card ^ 2
 
+/-! ### Task 6 — Discharge the five Phase-1 hypotheses for `stMultigraph` -/
+
+/-- **Hypothesis `hv`.** Vertices are `P`, so `|V| = |P|` by definition. -/
+@[simp] lemma stMultigraph_card_V (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    (stMultigraph P L).V.card = P.card := rfl
+
+/-- `numEdges` of `stMultigraph` is the length of the global edge list. -/
+lemma stMultigraph_numEdges (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    (stMultigraph P L).numEdges = (allEdges P L).length := rfl
+
+/-- **Edge-count identity.** `numEdges = Σ_{ℓ∈L} |edgesOnLine P ℓ|`: the global edge
+list is the concatenation of the per-line edge lists. -/
+lemma numEdges_eq_sum (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    (stMultigraph P L).numEdges = ∑ ℓ ∈ L, (edgesOnLine P ℓ).length := by
+  rw [stMultigraph_numEdges, allEdges, List.length_flatMap,
+    List.map_congr_left (g := fun ℓ => (edgesOnLine P ℓ).length)
+      (fun ℓ _ => length_edgesOnLineWithProof P ℓ),
+    Finset.sum_map_toList]
+
+/-- **Incidence double-counting.** `incidences P L = Σ_{ℓ∈L} |{p ∈ P : p ∈ ℓ}|`. -/
+lemma incidences_eq_sum (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    incidences P L = ∑ ℓ ∈ L, (P.filter (fun p => p ∈ ℓ)).card := by
+  rw [incidences, Finset.card_filter, Finset.sum_product_right]
+  exact Finset.sum_congr rfl (fun ℓ _ => (Finset.card_filter _ _).symm)
+
+/-- Per-line: a line with `k` incident points has `(P.filter (· ∈ ℓ)).card = k`
+incident points and `≥ k - 1` edges, so `incident-count ≤ edge-count + 1`. -/
+lemma filter_card_le_edges (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (P.filter (fun p => p ∈ ℓ)).card ≤ (edgesOnLine P ℓ).length + 1 := by
+  rw [← length_pointsOnLine]
+  rcases length_edgesOnLine P ℓ with h | h
+  · omega
+  · rw [h, List.length_nil, Nat.zero_add]
+    have hle : (pointsOnLine P ℓ).length ≤ 1 := by
+      by_contra hc
+      push_neg at hc
+      unfold edgesOnLine at h
+      rw [List.eq_nil_iff_length_eq_zero, List.length_zip, List.length_tail] at h
+      omega
+    omega
+
+/-- **Hypothesis `he`.** `I ≤ e + n`: summing the per-line bound, a line with `k`
+incident points contributes `k - 1` edges, and there are `≤ |L|` lines, so the
+`-1` slack costs at most `|L|`. -/
+lemma incidences_le_numEdges_add (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (_hL : ∀ ℓ ∈ L, IsAffineLine ℓ) :
+    incidences P L ≤ (stMultigraph P L).numEdges + L.card := by
+  rw [numEdges_eq_sum, incidences_eq_sum]
+  calc ∑ ℓ ∈ L, (P.filter (fun p => p ∈ ℓ)).card
+      ≤ ∑ ℓ ∈ L, ((edgesOnLine P ℓ).length + 1) :=
+        Finset.sum_le_sum (fun ℓ _ => filter_card_le_edges P ℓ)
+    _ = (∑ ℓ ∈ L, (edgesOnLine P ℓ).length) + L.card := by
+        rw [Finset.sum_add_distrib, Finset.sum_const, smul_eq_mul, mul_one]
+
+/-- **Hypothesis `hcr`.** `crossings ≤ n²` holds by definition: the `crossings`
+field is set to `L.card ^ 2` (encoding B). The genuine geometric content
+(`crossingCount ≤ L.card²`) lives in `stMultigraph_wellDrawn`. -/
+@[simp] lemma stMultigraph_crossings_le (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    (stMultigraph P L).crossings ≤ L.card ^ 2 := le_refl _
+
+/-! #### Multiplicity bookkeeping (geometry-free combinatorics)
+
+The reduction of `multiplicity` to a sum of per-line `List.countP`s, and the two
+facts (M1: only the unique line through `p ≠ q` contributes; M2: a fixed unordered
+pair is adjacent at most once in a sorted `Nodup` list) that bound the sum by `1`. -/
+
+/-- The Boolean match predicate for the unordered pair `{p, q}` on an edge. -/
+noncomputable def matchPair (p q : ℝ × ℝ) (e : (ℝ × ℝ) × (ℝ × ℝ)) : Bool :=
+  decide (e = (p, q) ∨ e = (q, p))
+
+/-- **Generic bridge.** The number of indices `i : Fin l.length` whose entry `l[i]`
+satisfies `P` equals `l.countP P`. Lets us reduce a `Finset.card` over edge indices
+(as in `DrawnMultigraph.multiplicity`) to a `List.countP`, which composes with
+`List.countP_flatMap` over the per-line edge lists. -/
+theorem finFilterCard_eq_countP {α : Type*} (P : α → Bool) (l : List α) :
+    (Finset.univ.filter (fun i : Fin l.length => P (l[i]) = true)).card = l.countP P := by
+  have hstep1 : (Finset.univ.filter (fun i : Fin l.length => P (l[i]) = true)).card
+      = ((List.finRange l.length).filter (fun i => P (l[i]))).toFinset.card := by
+    rw [List.toFinset_filter, List.toFinset_finRange]
+  have hstep2 : ((List.finRange l.length).filter (fun i => P (l[i]))).toFinset.card
+      = ((List.finRange l.length).filter (fun i => P (l[i]))).length :=
+    List.toFinset_card_of_nodup ((List.nodup_finRange l.length).filter _)
+  have hstep3 : ((List.finRange l.length).filter (fun i => P (l[i]))).length
+      = (List.finRange l.length).countP (fun i => P (l[i])) :=
+    (List.countP_eq_length_filter ..).symm
+  have hstep4 : (List.finRange l.length).countP (fun i => P (l[i])) = l.countP P := by
+    conv_rhs => rw [← List.map_getElem_finRange l, List.countP_map]
+    rfl
+  rw [hstep1, hstep2, hstep3, hstep4]
+
+/-- **Index-injectivity ⟹ `countP ≤ 1`.** If no two distinct indices of `l` both
+satisfy `P`, then `P` is satisfied at most once. (Proved by the generic bridge plus
+`Finset.card_le_one`.) -/
+theorem countP_le_one_of_index_inj {α : Type*} (P : α → Bool) (l : List α)
+    (h : ∀ i j (hi : i < l.length) (hj : j < l.length), P l[i] → P l[j] → i = j) :
+    l.countP P ≤ 1 := by
+  rw [← finFilterCard_eq_countP, Finset.card_le_one]
+  intro a ha b hb
+  simp only [Finset.mem_filter, Finset.mem_univ, true_and] at ha hb
+  exact Fin.ext (h a.1 b.1 a.2 b.2 ha hb)
+
+/-- **Multiplicity as a `countP`.** `multiplicity (stMultigraph P L) p q` counts the
+edge indices whose endpoint-pair is `(p,q)` or `(q,p)`; this is the `countP` of
+`matchPair p q` over the concatenated edge list `allEdges P L`. -/
+theorem multiplicity_eq_countP (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) (p q : ℝ × ℝ) :
+    (stMultigraph P L).multiplicity p q
+      = (allEdges P L).countP (fun s => matchPair p q s.1) := by
+  show (Finset.univ.filter (fun i : Fin (allEdges P L).length =>
+        (allEdges P L)[i].1 = (p,q) ∨ (allEdges P L)[i].1 = (q,p))).card = _
+  set l := allEdges P L with hl
+  set Pr : (Σ' e : (ℝ × ℝ) × (ℝ × ℝ), e.1 ≠ e.2) → Bool := fun s => matchPair p q s.1 with hPr
+  have hfilt : (Finset.univ.filter (fun i : Fin l.length =>
+        (l[i].1 = (p,q) ∨ l[i].1 = (q,p)))).card
+      = (Finset.univ.filter (fun i : Fin l.length => Pr (l[i]) = true)).card := by
+    congr 1
+    apply Finset.filter_congr
+    intro i _
+    rw [hPr]; unfold matchPair; rw [decide_eq_true_eq]
+  rw [hfilt, finFilterCard_eq_countP]
+
+/-- Projecting away the distinctness proofs recovers the bare edge list. -/
+theorem map_fst_edgesOnLineWithProof (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (edgesOnLineWithProof P ℓ).map (fun s => s.1) = edgesOnLine P ℓ := by
+  unfold edgesOnLineWithProof; rw [List.map_pmap]; simp
+
+/-- The per-line `countP` is unchanged by the distinctness-proof bundling. -/
+theorem countP_edgesOnLineWithProof (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) (p q : ℝ × ℝ) :
+    (edgesOnLineWithProof P ℓ).countP (fun s => matchPair p q s.1)
+      = (edgesOnLine P ℓ).countP (matchPair p q) := by
+  rw [← map_fst_edgesOnLineWithProof P ℓ, List.countP_map]; rfl
+
+/-- **`countP` over `allEdges` is a `Finset.sum` over lines.** `allEdges` is the
+`flatMap` of the per-line edge lists, so by `List.countP_flatMap` the total count is
+`Σ_{ℓ∈L} (edgesOnLine P ℓ).countP (matchPair p q)`. -/
+theorem multiplicity_flatMap_sum (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) (p q : ℝ × ℝ) :
+    (allEdges P L).countP (fun s => matchPair p q s.1)
+      = ∑ ℓ ∈ L, (edgesOnLine P ℓ).countP (matchPair p q) := by
+  unfold allEdges
+  rw [List.countP_flatMap]
+  simp only [Function.comp_def]
+  rw [List.map_congr_left (g := fun ℓ => (edgesOnLine P ℓ).countP (matchPair p q))
+      (fun ℓ _ => countP_edgesOnLineWithProof P ℓ p q),
+    Finset.sum_map_toList]
+
+/-- The `i`-th edge of `edgesOnLine P ℓ` joins the consecutive sorted points
+`pointsOnLine[i]` and `pointsOnLine[i+1]` (with `i+1` in range). -/
+theorem edgesOnLine_getElem (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) (i : ℕ)
+    (hi : i < (edgesOnLine P ℓ).length) :
+    ∃ (_ : i < (pointsOnLine P ℓ).length) (_ : i + 1 < (pointsOnLine P ℓ).length),
+      (edgesOnLine P ℓ)[i] = ((pointsOnLine P ℓ)[i], (pointsOnLine P ℓ)[i+1]) := by
+  set l := pointsOnLine P ℓ with hl
+  have hilen : i < (l.zip l.tail).length := hi
+  rw [List.length_zip] at hilen
+  have hkl : i < l.length := lt_of_lt_of_le hilen (min_le_left _ _)
+  have hktail : i < l.tail.length := lt_of_lt_of_le hilen (min_le_right _ _)
+  rw [List.length_tail] at hktail
+  have hk1 : i + 1 < l.length := by omega
+  refine ⟨hkl, hk1, ?_⟩
+  have hget : (edgesOnLine P ℓ)[i] = (l.zip l.tail)[i]'(by rw [List.length_zip]; exact hilen) := rfl
+  rw [hget, List.getElem_zip]
+  congr 1
+  rw [List.getElem_tail]
+
+/-- **M2 (per-line).** A fixed unordered pair `{p, q}` is adjacent at most once in the
+sorted incident-point list: `(edgesOnLine P ℓ).countP (matchPair p q) ≤ 1`. The
+ordering is by `lineKey`, the list is `Nodup` (`pointsOnLine_nodup`), so each point
+occurs at one position; the two orientations `(p,q)` and `(q,p)` cannot both occur
+(they would force `i = j+1` and `i+1 = j`). -/
+theorem edgesOnLine_countP_le_one (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) (p q : ℝ × ℝ) :
+    (edgesOnLine P ℓ).countP (matchPair p q) ≤ 1 := by
+  apply countP_le_one_of_index_inj
+  intro i j hi hj hPi hPj
+  set l := pointsOnLine P ℓ with hl
+  have hnd := pointsOnLine_nodup P ℓ
+  obtain ⟨hii, hki, hei⟩ := edgesOnLine_getElem P ℓ i hi
+  obtain ⟨hij, hkj, hej⟩ := edgesOnLine_getElem P ℓ j hj
+  rw [hei] at hPi
+  rw [hej] at hPj
+  unfold matchPair at hPi hPj
+  rw [decide_eq_true_eq] at hPi hPj
+  simp only [Prod.mk.injEq] at hPi hPj
+  rcases hPi with ⟨hip, hiq⟩ | ⟨hiq, hip⟩ <;>
+    rcases hPj with ⟨hjp, hjq⟩ | ⟨hjq, hjp⟩
+  · have e : l[i] = l[j] := by rw [hip, hjp]
+    exact (hnd.getElem_inj_iff (hi := hii) (hj := hij)).mp e
+  · have e1 : l[i] = l[j+1] := by rw [hip, hjp]
+    have e2 : l[i+1] = l[j] := by rw [hiq, hjq]
+    have hi1 : i = j + 1 := (hnd.getElem_inj_iff (hi := hii) (hj := hkj)).mp e1
+    have hj1 : i + 1 = j := (hnd.getElem_inj_iff (hi := hki) (hj := hij)).mp e2
+    omega
+  · have e1 : l[i+1] = l[j] := by rw [hip, hjp]
+    have e2 : l[i] = l[j+1] := by rw [hiq, hjq]
+    have hi1 : i + 1 = j := (hnd.getElem_inj_iff (hi := hki) (hj := hij)).mp e1
+    have hj1 : i = j + 1 := (hnd.getElem_inj_iff (hi := hii) (hj := hkj)).mp e2
+    omega
+  · have e : l[i] = l[j] := by rw [hiq, hjq]
+    exact (hnd.getElem_inj_iff (hi := hii) (hj := hij)).mp e
+
+/-- **M1 support.** A line not containing both `p` and `q` contributes no matching
+edge: every edge of `edgesOnLine P ℓ` has both endpoints on `ℓ`, so a match would
+force `p, q ∈ ℓ`. -/
+theorem countP_edgesOnLine_eq_zero_of_not_mem (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ))
+    {p q : ℝ × ℝ} (h : ¬ (p ∈ ℓ ∧ q ∈ ℓ)) :
+    (edgesOnLine P ℓ).countP (matchPair p q) = 0 := by
+  rw [List.countP_eq_zero]
+  intro e he
+  unfold matchPair
+  simp only [decide_eq_true_eq]
+  intro hcontra
+  have hmem := edgesOnLine_mem P ℓ e he
+  apply h
+  rcases hcontra with heq | heq
+  · rw [heq] at hmem; exact ⟨hmem.1.2, hmem.2.2⟩
+  · rw [heq] at hmem; exact ⟨hmem.2.2, hmem.1.2⟩
+
+/-- A degenerate pair `{p, p}` contributes no edge: edges join *distinct* points
+(`edgesOnLine_distinct`), so no edge equals `(p, p)`. -/
+theorem countP_edgesOnLine_eq_zero_of_eq (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) (p : ℝ × ℝ) :
+    (edgesOnLine P ℓ).countP (matchPair p p) = 0 := by
+  rw [List.countP_eq_zero]
+  intro e he
+  unfold matchPair
+  simp only [or_self, decide_eq_true_eq]
+  intro hcontra
+  have hdist := edgesOnLine_distinct P ℓ e he
+  rw [hcontra] at hdist
+  exact hdist rfl
+
+/-- **Hypothesis `hmult` (PROVEN, sorry-free).** Multiplicity ≤ 1: at most one
+segment joins a given unordered point pair `{p, q}`.
+
+The multiplicity reduces (via `multiplicity_eq_countP` and `multiplicity_flatMap_sum`)
+to `Σ_{ℓ∈L} (edgesOnLine P ℓ).countP (matchPair p q)`.
+
+* If `p = q`: every edge has *distinct* endpoints (`edgesOnLine_distinct`), so the
+  predicate `edge = (p,p)` is never satisfied; each term is `0`
+  (`countP_edgesOnLine_eq_zero_of_eq`), sum `= 0 ≤ 1`.
+* If `p ≠ q`: a line not containing both `p, q` contributes `0`
+  (`countP_edgesOnLine_eq_zero_of_not_mem`); each remaining term is `≤ 1`
+  (`edgesOnLine_countP_le_one`, the M2 fact); and `lines_through_two_points_le_one`
+  bounds the number of lines through both by `1`. So the sum is `≤ 1`. -/
+lemma stMultigraph_multiplicity_le_one (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (hL : ∀ ℓ ∈ L, IsAffineLine ℓ) :
+    ∀ p q, (stMultigraph P L).multiplicity p q ≤ 1 := by
+  intro p q
+  rw [multiplicity_eq_countP, multiplicity_flatMap_sum]
+  by_cases hpq : p = q
+  · subst hpq
+    rw [Finset.sum_eq_zero (fun ℓ _ => countP_edgesOnLine_eq_zero_of_eq P ℓ p)]
+    norm_num
+  · have hterm : ∀ ℓ ∈ L, (edgesOnLine P ℓ).countP (matchPair p q)
+        ≤ (if p ∈ ℓ ∧ q ∈ ℓ then 1 else 0) := by
+      intro ℓ _
+      by_cases hmem : p ∈ ℓ ∧ q ∈ ℓ
+      · rw [if_pos hmem]; exact edgesOnLine_countP_le_one P ℓ p q
+      · rw [if_neg hmem, countP_edgesOnLine_eq_zero_of_not_mem P ℓ hmem]
+    calc ∑ ℓ ∈ L, (edgesOnLine P ℓ).countP (matchPair p q)
+        ≤ ∑ ℓ ∈ L, (if p ∈ ℓ ∧ q ∈ ℓ then 1 else 0) := Finset.sum_le_sum hterm
+      _ = (L.filter (fun ℓ => p ∈ ℓ ∧ q ∈ ℓ)).card := by
+          rw [Finset.sum_ite, Finset.sum_const, Finset.sum_const]; simp
+      _ ≤ 1 := lines_through_two_points_le_one hL hpq
+
+/-- **Hypothesis `hwd` (carries the geometric crossing bound under encoding B).**
+`WellDrawn`, i.e. `crossingCount (stMultigraph P L) ≤ L.card²`.
+
+PROOF SKETCH (mathematically complete; Lean formalization carries one labelled
+residual). `crossingCount` counts edge-index pairs `i < j` whose segment
+*interiors* meet. Map each such pair to the unordered pair of lines
+`{line(i), line(j)}`:
+
+* **Same line** `line(i) = line(j)`: the two segments are distinct consecutive
+  segments of one sorted line; their interiors are *disjoint* because `lineKey` is
+  a strictly monotone affine coordinate along the line, sending the two open
+  segments to disjoint open key-intervals (consecutive sorted intervals share at
+  most an endpoint). So a crossing pair never lies on one line.
+* **Distinct lines** `ℓ ≠ ℓ'`: they meet in `≤ 1` point `x`
+  (`encard_inter_le_one_of_lines`); a crossing forces both interiors to contain
+  `x`. At most one segment of `ℓ` contains `x` in its interior (interiors within a
+  line are disjoint), likewise for `ℓ'`, so at most one crossing pair maps to each
+  line-pair `{ℓ, ℓ'}`.
+
+The map is therefore injective into `{2-subsets of L}`, giving
+`crossingCount ≤ C(|L|, 2) ≤ |L|²`. -/
+lemma stMultigraph_wellDrawn (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (hL : ∀ ℓ ∈ L, IsAffineLine ℓ) :
+    (stMultigraph P L).WellDrawn := by
+  -- OBSTRUCTION (geometric residual; the mathematics in the docstring above is
+  -- complete and was checked to be sound, but the Lean formalization is not yet
+  -- built). Reducing `crossingCount (stMultigraph P L) ≤ L.card²` requires four
+  -- concrete deferred Lean obligations, none of which has Mathlib support that
+  -- discharges it directly at v4.27.0:
+  --
+  --   W1  EDGE → LINE map `Fin (stMultigraph P L).numEdges → Set (ℝ×ℝ)` recovering
+  --       which `ℓ ∈ L` each edge came from. `allEdges` is a `List.flatMap`, so
+  --       this is a flatMap-index inversion (no clean Mathlib lemma; needs a
+  --       custom recursive block-index decomposition of `List.flatMap`).
+  --   W2  `interiorOfArc (segmentArc p q hpq) ⊆ ℓ` whenever `p, q ∈ ℓ` and
+  --       `IsAffineLine ℓ`: the open segment between two points of an affine line
+  --       lies on the line (affine-combination membership; `IsAffineLine` unfolds
+  --       to a single linear equation that is preserved under `(1-t)•p + t•q`).
+  --   W3  INTERIOR-DISJOINTNESS of distinct same-line segments: under the strictly
+  --       monotone affine coordinate `lineKey ℓ` (key injectivity is the already-
+  --       proven `lineKey_injOn`), `interiorOfArc (segmentArc pts[k] pts[k+1])`
+  --       maps to the OPEN key-interval `(key pts[k], key pts[k+1])`, and the
+  --       sorted distinct points give pairwise-disjoint open key-intervals, so
+  --       distinct segments of one line have disjoint interiors. This additionally
+  --       needs `pointsOnLine` SORTEDNESS (`List.sorted_mergeSort`/`List.Sorted`),
+  --       which is NOT yet extracted as a lemma (only `pointsOnLine_perm`/`_nodup`
+  --       exist). W3 ⟹ a crossing pair never lies on a single line, and ⟹ at most
+  --       one segment of a given line contains a fixed point in its interior.
+  --   W4  THE INJECTION: map each crossing pair `(i,j)` (i<j, interiors meet at a
+  --       point x) to the unordered line-pair `{line i, line j}`. By W2+W3 the
+  --       lines are distinct; they meet in ≤1 point (`encard_inter_le_one_of_lines`,
+  --       PROVEN), which is x; W3 forces i, j unique on their lines, so the map is
+  --       injective. Then `crossingCount ≤ (L.powersetCard 2).card = C(|L|,2) ≤
+  --       L.card²` via `Finset.card_le_card_of_injOn` + `Nat.choose_two_right`.
+  --
+  -- W1 (flatMap inversion) and W3 (sortedness + open-interval image) are the
+  -- substantive blockers; W2 and W4's arithmetic tail are routine once W1/W3 land.
+  sorry
+
 end PachSharir.ST
