@@ -28,8 +28,15 @@ lake exe cache get      # fetch Mathlib oleans once
 
 ## Status
 
-Work in progress — scaffold only. See `PLAN.md` for the statement surface and the
-crossing-lemma → Szemerédi–Trotter → Pach–Sharir proof route.
+Szemerédi–Trotter for affine lines is **closed sorry-free** conditional on the
+multigraph crossing lemma as a single named hypothesis: `PachSharir.ST.szemerediTrotter_of_crossingLemma`'s `#print axioms` is `[propext,
+Classical.choice, Quot.sound]` — no `sorryAx`. This is the ST input the Pach–Sharir
+curve bound is lifted from.
+
+The paper-faithful `Theorem23.lean` carries Gap A (`theorem23 := sorry`,
+`corollary24 := sorry`). See `PLAN.md` for the current statement surface and
+`../docs/superpowers/plans/2026-05-27-pach-sharir-theorem23-from-szemeredi-trotter.md`
+for the implementation plan that closes `theorem23` from the ST result.
 
 ## License
 

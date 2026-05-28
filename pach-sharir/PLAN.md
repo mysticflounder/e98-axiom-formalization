@@ -54,13 +54,28 @@ planarity / combinatorial-map substrate that `crossing-lemma` currently vendors.
 If it lands, the planar-drawing foundation can be de-vendored — but it supplies
 neither ST nor the point/curve incidence argument, which remain bespoke.
 
-## Statement surface (to design)
+## Statement surface (as built)
 
-- `IncidenceSystem` / `TwoDegreesOfFreedom` / `Multiplicity` predicates over a
-  finite point set and a finite family of bounded-degree curves.
-- `PachSharirIncidenceBound` : the `Prop` stating Theorem 2.3.
-- The `ℝ^D` variant consumed by `pdz`.
-- An `Audit.lean` pinning `#print axioms` once the proof is sorry-free.
+In `pach-sharir/PachSharir/`:
+
+- **`Theorem23.lean`** — paper-faithful Props and the named Gap-A holes:
+  `incidenceCount`, `TwoDegreesOfFreedom`, `incidenceBoundTerm`,
+  `IsPlaneAlgebraicCurveOfDegreeLE`, `IsAlgebraicCurveDefinedBy`,
+  `Theorem23Statement`, `Corollary24Statement`, and `theorem23 := sorry`,
+  `corollary24 := sorry` (Gap A pending the ST→Pach–Sharir lift).
+- **`SzemerediTrotter.lean`** — the full ST sub-development, namespace
+  `PachSharir.ST`. Defines `IsAffineLine`, `incidences`,
+  `SzemerediTrotterStatement`, the combinatorial core
+  `incidence_bound_of_crossingLemma` (geometry-free, takes `hCL` as a
+  hypothesis), the geometric realization `stMultigraph` with all five bridge
+  lemmas (`stMultigraph_card_V`, `stMultigraph_multiplicity_le_one`,
+  `stMultigraph_wellDrawn`, `incidences_le_numEdges_add`,
+  `stMultigraph_crossings_le`), and the top theorem
+  `szemerediTrotter_of_crossingLemma (hCL : CrossingLemmaMultigraphStatement) :
+  SzemerediTrotterStatement`.
+
+`Audit.lean` is deferred until the whole module is `sorry`-free (the residual
+`theorem23`/`corollary24` placeholders keep that gate open).
 
 ## Toolchain / deps
 
@@ -69,5 +84,21 @@ neither ST nor the point/curve incidence argument, which remain bespoke.
 
 ## Status
 
-Scaffold only (lakefile, toolchain, build script, root aggregator). No statements
-or proofs yet.
+ST(lines) is **closed sorry-free conditional on `hCL` alone.**
+`PachSharir.ST.szemerediTrotter_of_crossingLemma`'s independently-verified
+`#print axioms` is `[propext, Classical.choice, Quot.sound]` — no `sorryAx`; the
+multigraph crossing lemma threads at the type level via the `hCL` hypothesis.
+This includes the geometric `stMultigraph_wellDrawn` bound
+(`crossingCount ≤ |L|²`), discharged via a flatMap edge→line inversion +
+`pointsOnLine` sortedness (`List.sorted_mergeSort`) + a `crossingLinePair`
+injection into `L ×ˢ L` (uses the already-proven
+`encard_inter_le_one_of_lines`).
+
+Gap A's two `sorry`s remain in `Theorem23.lean`: `theorem23` and `corollary24`.
+The implementation plan for closing `theorem23` from
+`szemerediTrotter_of_crossingLemma` lives at
+[`docs/superpowers/plans/2026-05-27-pach-sharir-theorem23-from-szemeredi-trotter.md`](../docs/superpowers/plans/2026-05-27-pach-sharir-theorem23-from-szemeredi-trotter.md)
+— Route A (Pach–Sharir 1998 direct curve generalization), four phases / nine
+tasks, introduces one new named input `hJordan : JordanArcDecompositionStatement`
+alongside the existing `hCL`. Corollary 2.4 (the `ℝ^D` variant `pdz` actually
+consumes) is sketched as the next plan after that.

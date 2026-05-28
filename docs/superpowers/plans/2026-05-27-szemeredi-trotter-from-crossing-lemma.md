@@ -1,5 +1,20 @@
 # Szemerédi–Trotter from the Crossing Lemma — Implementation Plan
 
+> **Status (post-execution, 2026-05-27): COMPLETE.** All four phases shipped on
+> local `main` through commit `fc5f70d`. The headline theorem
+> `PachSharir.ST.szemerediTrotter_of_crossingLemma : SzemerediTrotterStatement`
+> takes a single hypothesis `hCL : CrossingLemmaMultigraphStatement` and has
+> independently-verified `#print axioms = [propext, Classical.choice, Quot.sound]`
+> — no `sorryAx`. Phase 1 (combinatorial endgame, commit `9d7c092`), Phase 2
+> (geometric bridges Tasks 4–6, ff-merged `d08ee11`), and Phase 3 (assembly,
+> `d290340`) followed the checkboxes below. The plan's "Known risk" — that the
+> geometric `wellDrawn` bound might ship as a labelled residual — was resolved
+> in a follow-on Phase 4 (`fc5f70d`, `pach-sharir/ST: close stMultigraph_wellDrawn (W1–W4 geometric crossing bound)`),
+> which discharged `stMultigraph_wellDrawn` sorry-free via flatMap edge→line
+> inversion + `pointsOnLine` sortedness (`List.sorted_mergeSort`) + the
+> `crossingLinePair` injection into `L ×ˢ L`. The unchecked checkboxes below are
+> kept as the historical record of execution order.
+>
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 >
 > **Domain caveat (read first):** This is *novel Lean 4 / Mathlib formalization*, not app development. The "complete compile-ready code in every step" convention is relaxed for **proof bodies only**: every *statement, definition, and lemma signature* is given as complete Lean, but proof bodies are specified as a **strategy + the exact Mathlib API to use**, because writing verbatim tactic scripts in advance for unproven mathematics is not honest — discovering the script is the work. The "test" for each task is: the file builds, the `sorry` count is exactly what the task claims, and `#print axioms` shows the expected surface.
