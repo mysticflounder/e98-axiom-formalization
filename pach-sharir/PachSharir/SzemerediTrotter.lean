@@ -222,4 +222,145 @@ lemma incidence_bound_of_crossingLemma
       linarith [this]
     nlinarith [heIR, hprod, hmr, hnr, hm0, hn0]
 
+/-! ## Phase 2 — Geometric realization (points + lines ⟹ `DrawnMultigraph`)
+
+Turn `(P : Finset (ℝ×ℝ))` and `(L : Finset (Set (ℝ×ℝ)))` into a plane-drawn
+multigraph of straight segments so the five hypotheses of
+`incidence_bound_of_crossingLemma` hold.
+
+### Task 4 — Order the incident points on a single line and build its edge list
+-/
+
+/-- The projection of a point onto the direction vector `(-b, a)` of the line
+`{p | a·p.1 + b·p.2 = c}`. This is a strictly monotone affine coordinate along
+the line, so it gives a total order on the incident points. -/
+noncomputable def lineKeyCoeff (a b : ℝ) (p : ℝ × ℝ) : ℝ := -b * p.1 + a * p.2
+
+/-- The sort key for points on a line `ℓ`. When `ℓ` is an affine line it uses the
+chosen coefficients `(a, b)` of `ℓ`'s defining equation (direction projection);
+on non-lines it is the constant `0` (never used on the proof path). -/
+noncomputable def lineKey (ℓ : Set (ℝ × ℝ)) (p : ℝ × ℝ) : ℝ := by
+  classical
+  exact if h : IsAffineLine ℓ then lineKeyCoeff h.choose h.choose_spec.choose p else 0
+
+/-- Key injectivity from explicit coefficients: two points of the line
+`{a·x + b·y = c}` with equal direction-projection keys coincide. The `2×2`
+system `a·Δ = 0`, `-b·Δ' + a·Δ'' = 0` has determinant `a² + b² ≠ 0`. -/
+lemma key_inj_coeff (a b c : ℝ) (hab : (a, b) ≠ (0, 0)) (p p' : ℝ × ℝ)
+    (hp : a * p.1 + b * p.2 = c) (hp' : a * p'.1 + b * p'.2 = c)
+    (hk : lineKeyCoeff a b p = lineKeyCoeff a b p') : p = p' := by
+  unfold lineKeyCoeff at hk
+  have hsq : a ^ 2 + b ^ 2 ≠ 0 := by
+    intro h
+    have ha : a = 0 := by nlinarith [sq_nonneg a, sq_nonneg b]
+    have hb : b = 0 := by nlinarith [sq_nonneg a, sq_nonneg b]
+    exact hab (Prod.ext ha hb)
+  have e1 : a * (p.1 - p'.1) + b * (p.2 - p'.2) = 0 := by linear_combination hp - hp'
+  have e2 : -b * (p.1 - p'.1) + a * (p.2 - p'.2) = 0 := by linear_combination hk
+  have hx : (a ^ 2 + b ^ 2) * (p.1 - p'.1) = 0 := by linear_combination a * e1 - b * e2
+  have hy : (a ^ 2 + b ^ 2) * (p.2 - p'.2) = 0 := by linear_combination b * e1 + a * e2
+  have hx0 : p.1 - p'.1 = 0 := (mul_eq_zero.mp hx).resolve_left hsq
+  have hy0 : p.2 - p'.2 = 0 := (mul_eq_zero.mp hy).resolve_left hsq
+  exact Prod.ext (by linarith) (by linarith)
+
+/-- **The key is injective on the line.** Distinct points of an affine line get
+distinct direction-projection keys, so the per-line sort is strict. -/
+lemma lineKey_injOn {ℓ : Set (ℝ × ℝ)} (h : IsAffineLine ℓ) :
+    Set.InjOn (lineKey ℓ) ℓ := by
+  intro p hp q hq hkey
+  set a := h.choose with ha
+  set b := h.choose_spec.choose with hb
+  set c := h.choose_spec.choose_spec.choose with hc
+  obtain ⟨hab, hℓeq⟩ := h.choose_spec.choose_spec.choose_spec
+  rw [hℓeq, Set.mem_setOf_eq] at hp hq
+  have hk : lineKeyCoeff a b p = lineKeyCoeff a b q := by
+    rw [lineKey, dif_pos h, lineKey, dif_pos h] at hkey; exact hkey
+  exact key_inj_coeff a b c hab p q hp hq hk
+
+/-- The points of `P` incident to a line `ℓ`, sorted along `ℓ` by the
+direction-projection key `lineKey`. Returned as a `List` so consecutive pairs are
+well-defined; the underlying multiset is `P.filter (· ∈ ℓ)`. -/
+noncomputable def pointsOnLine (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) : List (ℝ × ℝ) :=
+  (P.filter (fun p => p ∈ ℓ)).toList.mergeSort (fun p q => decide (lineKey ℓ p ≤ lineKey ℓ q))
+
+/-- `pointsOnLine` is a permutation of the incident-point list `(P.filter (· ∈ ℓ)).toList`. -/
+lemma pointsOnLine_perm (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (pointsOnLine P ℓ).Perm (P.filter (fun p => p ∈ ℓ)).toList :=
+  List.mergeSort_perm _ _
+
+/-- Membership in `pointsOnLine` ⇔ membership in `P` and in `ℓ`. -/
+lemma mem_pointsOnLine {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)} {p : ℝ × ℝ} :
+    p ∈ pointsOnLine P ℓ ↔ p ∈ P ∧ p ∈ ℓ := by
+  rw [(pointsOnLine_perm P ℓ).mem_iff, Finset.mem_toList, Finset.mem_filter]
+
+/-- `pointsOnLine` has no repeated points (it is a sort of a `Finset`'s element list). -/
+lemma pointsOnLine_nodup (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (pointsOnLine P ℓ).Nodup := by
+  rw [(pointsOnLine_perm P ℓ).nodup_iff]; exact Finset.nodup_toList _
+
+/-- `|pointsOnLine P ℓ| = |{p ∈ P : p ∈ ℓ}|`: the sorted list keeps every incident
+point exactly once. -/
+lemma length_pointsOnLine (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (pointsOnLine P ℓ).length = (P.filter (fun p => p ∈ ℓ)).card := by
+  rw [(pointsOnLine_perm P ℓ).length_eq, Finset.length_toList]
+
+/-- Consecutive (point, point) pairs along `ℓ`: `k` incident points give `k - 1`
+segment edges. -/
+noncomputable def edgesOnLine (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    List ((ℝ × ℝ) × (ℝ × ℝ)) :=
+  (pointsOnLine P ℓ).zip (pointsOnLine P ℓ).tail
+
+/-- **Consecutive points are distinct.** Each edge of `edgesOnLine` joins two
+different points, because `pointsOnLine` is `Nodup`: adjacent entries sit at the
+consecutive indices `k, k+1`, which are distinct by nodup. -/
+lemma edgesOnLine_distinct (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    ∀ e ∈ edgesOnLine P ℓ, e.1 ≠ e.2 := by
+  intro e he
+  obtain ⟨x, y⟩ := e
+  have hnd := pointsOnLine_nodup P ℓ
+  set l := pointsOnLine P ℓ with hl
+  change (x, y) ∈ l.zip l.tail at he
+  rw [List.mem_iff_getElem] at he
+  obtain ⟨k, hk, hget⟩ := he
+  rw [List.length_zip] at hk
+  have hkl : k < l.length := lt_of_lt_of_le hk (min_le_left _ _)
+  have hktail : k < l.tail.length := lt_of_lt_of_le hk (min_le_right _ _)
+  rw [List.length_tail] at hktail
+  have hk1 : k + 1 < l.length := by omega
+  rw [List.getElem_zip, Prod.mk.injEq] at hget
+  obtain ⟨hx, hy⟩ := hget
+  have htaileq : l.tail[k] = l[k + 1] := by rw [List.getElem_tail]
+  rw [htaileq] at hy
+  intro hcontra
+  rw [← hx, ← hy] at hcontra
+  have := (hnd.getElem_inj_iff (i := k) (hi := hkl) (j := k + 1) (hj := hk1)).mp hcontra
+  omega
+
+/-- Both endpoints of every edge of `edgesOnLine P ℓ` lie in `P` (and on `ℓ`). -/
+lemma edgesOnLine_mem (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    ∀ e ∈ edgesOnLine P ℓ, (e.1 ∈ P ∧ e.1 ∈ ℓ) ∧ (e.2 ∈ P ∧ e.2 ∈ ℓ) := by
+  intro e he
+  obtain ⟨x, y⟩ := e
+  set l := pointsOnLine P ℓ with hl
+  change (x, y) ∈ l.zip l.tail at he
+  have hx : x ∈ l := List.of_mem_zip he |>.1
+  have hy : y ∈ l := by
+    have := List.of_mem_zip he |>.2
+    exact List.mem_of_mem_tail this
+  exact ⟨mem_pointsOnLine.mp hx, mem_pointsOnLine.mp hy⟩
+
+/-- **Edge-count identity.** A line with `k` incident points contributes `k - 1`
+segment edges (and none when `k = 0`). -/
+lemma length_edgesOnLine (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (edgesOnLine P ℓ).length + 1 = (pointsOnLine P ℓ).length
+      ∨ edgesOnLine P ℓ = [] := by
+  unfold edgesOnLine
+  rcases Nat.eq_zero_or_pos (pointsOnLine P ℓ).length with h | h
+  · right
+    rw [List.length_eq_zero_iff] at h
+    rw [h]; rfl
+  · left
+    rw [List.length_zip, List.length_tail]
+    omega
+
 end PachSharir.ST
