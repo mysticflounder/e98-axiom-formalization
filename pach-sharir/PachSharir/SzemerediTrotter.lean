@@ -363,4 +363,90 @@ lemma length_edgesOnLine (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
     rw [List.length_zip, List.length_tail]
     omega
 
+/-! ### Task 5 — Assemble the global `DrawnMultigraph` of straight segments -/
+
+/-- The straight segment from `p` to `q` as a `SimpleCurveArc`. The parameter
+`h : p ≠ q` is required for the injectivity field (`SimpleCurveArc.inj` is *global*
+injectivity of `param`, which fails for a degenerate segment); in `stMultigraph`
+every edge joins two *distinct* consecutive points of `pointsOnLine`
+(`edgesOnLine_distinct`), so the hypothesis is always available. -/
+noncomputable def segmentArc (p q : ℝ × ℝ) (h : p ≠ q) : SimpleCurveArc where
+  param := fun t => ((1 - (t : ℝ)) • p.1 + (t : ℝ) • q.1,
+                     (1 - (t : ℝ)) • p.2 + (t : ℝ) • q.2)
+  cont := by fun_prop
+  inj := by
+    intro s t hst
+    simp only [Prod.mk.injEq, smul_eq_mul] at hst
+    obtain ⟨h1, h2⟩ := hst
+    apply Subtype.ext
+    by_contra hne
+    have hq1 : q.1 ≠ p.1 ∨ q.2 ≠ p.2 := by
+      by_contra hh; push_neg at hh; exact h (Prod.ext hh.1.symm hh.2.symm)
+    rcases hq1 with hq | hq
+    · have hz : ((s : ℝ) - t) * (q.1 - p.1) = 0 := by nlinarith [h1]
+      rcases mul_eq_zero.mp hz with hh | hh
+      · exact hne (by linarith)
+      · exact hq (by linarith)
+    · have hz : ((s : ℝ) - t) * (q.2 - p.2) = 0 := by nlinarith [h2]
+      rcases mul_eq_zero.mp hz with hh | hh
+      · exact hne (by linarith)
+      · exact hq (by linarith)
+
+/-- The consecutive-segment edges of a single line, each bundled with a proof that
+its two endpoints are distinct (so it can become a non-degenerate `segmentArc`). -/
+noncomputable def edgesOnLineWithProof (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    List (Σ' e : (ℝ × ℝ) × (ℝ × ℝ), e.1 ≠ e.2) :=
+  (edgesOnLine P ℓ).pmap (fun e he => ⟨e, he⟩) (edgesOnLine_distinct P ℓ)
+
+/-- A bundled edge's underlying pair is a genuine edge of its line. -/
+lemma mem_edgesOnLineWithProof {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    {s : Σ' e : (ℝ × ℝ) × (ℝ × ℝ), e.1 ≠ e.2} (hs : s ∈ edgesOnLineWithProof P ℓ) :
+    s.1 ∈ edgesOnLine P ℓ := by
+  unfold edgesOnLineWithProof at hs
+  rw [List.mem_pmap] at hs
+  obtain ⟨e, he, heq⟩ := hs
+  rw [← heq]; exact he
+
+/-- `|edgesOnLineWithProof P ℓ| = |edgesOnLine P ℓ|` (the `pmap` only attaches
+distinctness proofs, it does not drop or duplicate edges). -/
+lemma length_edgesOnLineWithProof (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (edgesOnLineWithProof P ℓ).length = (edgesOnLine P ℓ).length := by
+  unfold edgesOnLineWithProof; rw [List.length_pmap]
+
+/-- All consecutive-segment edges over every line of `L`, bundled with
+distinctness proofs and concatenated. This is the edge list of `stMultigraph`. -/
+noncomputable def allEdges (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    List (Σ' e : (ℝ × ℝ) × (ℝ × ℝ), e.1 ≠ e.2) :=
+  L.toList.flatMap (fun ℓ => edgesOnLineWithProof P ℓ)
+
+/-- Both endpoints of every edge in `allEdges` lie in `P`. -/
+lemma allEdges_mem (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) :
+    ∀ s ∈ allEdges P L, s.1.1 ∈ P ∧ s.1.2 ∈ P := by
+  intro s hs
+  unfold allEdges at hs
+  rw [List.mem_flatMap] at hs
+  obtain ⟨ℓ, hℓ, hsℓ⟩ := hs
+  have he := mem_edgesOnLineWithProof hsℓ
+  have := edgesOnLine_mem P ℓ s.1 he
+  exact ⟨this.1.1, this.2.1⟩
+
+/-- **The drawn multigraph of straight segments.** Vertices `P`; one edge per
+consecutive-segment over all lines of `L` (`allEdges`); each edge drawn as the
+straight `segmentArc` between its distinct endpoints; `crossings` set to the
+clean upper bound `L.card²`.
+
+The crossing-bound encoding: `crossings := L.card ^ 2` rather than the structure's
+`crossingCount`. This avoids the `crossingCount` self-reference entirely (it reads
+`numEdges`/`arc`, which are the very fields being defined) and makes
+`stMultigraph_crossings_le` trivial (`le_refl`); the genuine geometric bound
+`crossingCount ≤ L.card²` is then carried by `stMultigraph_wellDrawn`. -/
+noncomputable def stMultigraph
+    (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ))) : DrawnMultigraph where
+  V := P
+  numEdges := (allEdges P L).length
+  endpoints := fun i => (allEdges P L)[i].1
+  endpoints_mem := fun i => allEdges_mem P L ((allEdges P L)[i]) (List.getElem_mem _)
+  arc := fun i => segmentArc ((allEdges P L)[i].1).1 ((allEdges P L)[i].1).2 (allEdges P L)[i].2
+  crossings := L.card ^ 2
+
 end PachSharir.ST
