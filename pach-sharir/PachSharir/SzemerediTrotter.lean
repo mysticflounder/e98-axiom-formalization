@@ -711,75 +711,518 @@ lemma stMultigraph_multiplicity_le_one (P : Finset (ℝ × ℝ)) (L : Finset (Se
           rw [Finset.sum_ite, Finset.sum_const, Finset.sum_const]; simp
       _ ≤ 1 := lines_through_two_points_le_one hL hpq
 
+/-! #### Geometric infrastructure for the crossing bound (W1–W3)
+
+The pieces needed to show `crossingCount (stMultigraph P L) ≤ L.card²`. Three
+geometric facts:
+
+* **W1** — Edge → line map `lineForEdge`. Each edge of `allEdges P L` was inserted
+  by the `flatMap` over `L.toList` from some `ℓ ∈ L`; we recover that `ℓ`
+  (`Classical.choose` on the `mem_flatMap` witness), together with the *line
+  membership* of the edge in `edgesOnLineWithProof P (lineForEdge i)`.
+* **W2** — Affine combinations of two points of an affine line lie on the line:
+  `interiorOfArc (segmentArc p q hpq) ⊆ ℓ` whenever `p, q ∈ ℓ` and `IsAffineLine ℓ`.
+  This is a single `linear_combination` discharge of `IsAffineLine`'s linear-equation
+  unfolding.
+* **W3** — Interior-disjointness of distinct same-line edges. Two ingredients:
+  (a) `pointsOnLine` is *strictly* sorted by `lineKey ℓ` (sortedness comes from
+  `List.pairwise_mergeSort`; strictness from `lineKey_injOn` + `pointsOnLine_nodup`);
+  (b) for an edge `(pts[k], pts[k+1])`, the interior of `segmentArc` has `lineKey`
+  values in the open interval `(lineKey ℓ pts[k], lineKey ℓ pts[k+1])`; consecutive
+  open intervals of a strict total order are disjoint. -/
+
+/-- **W2.** The open segment between two points `p, q` of an affine line `ℓ` is
+contained in `ℓ`: every interior point is `(1-t)•p + t•q` for `t ∈ (0,1)`, which
+satisfies the same defining linear equation as `p` and `q`. -/
+lemma interiorOfArc_segmentArc_subset_line {ℓ : Set (ℝ × ℝ)}
+    (hℓ : IsAffineLine ℓ) {p q : ℝ × ℝ} (hp : p ∈ ℓ) (hq : q ∈ ℓ) (hpq : p ≠ q) :
+    interiorOfArc (segmentArc p q hpq) ⊆ ℓ := by
+  intro x hx
+  unfold interiorOfArc at hx
+  simp only [Set.mem_image, Set.mem_setOf_eq] at hx
+  obtain ⟨t, _, rfl⟩ := hx
+  obtain ⟨a, b, c, _, rfl⟩ := hℓ
+  rw [Set.mem_setOf_eq] at hp hq ⊢
+  change a * ((1 - (t : ℝ)) • p.1 + (t : ℝ) • q.1)
+        + b * ((1 - (t : ℝ)) • p.2 + (t : ℝ) • q.2) = c
+  simp only [smul_eq_mul]
+  linear_combination (1 - (t : ℝ)) * hp + (t : ℝ) * hq
+
+/-- **lineKey is affine** along an affine line: for any `t ∈ ℝ`,
+`lineKey ℓ ((1-t)•p + t•q) = (1-t) * lineKey ℓ p + t * lineKey ℓ q`. Both branches
+of `lineKey` are affine in the point coordinates, so this holds unconditionally
+in `ℓ` (no `IsAffineLine ℓ` hypothesis required). -/
+lemma lineKey_affine_combination (ℓ : Set (ℝ × ℝ)) (p q : ℝ × ℝ) (t : ℝ) :
+    lineKey ℓ (((1 - t) • p.1 + t • q.1, (1 - t) • p.2 + t • q.2) : ℝ × ℝ)
+    = (1 - t) * lineKey ℓ p + t * lineKey ℓ q := by
+  by_cases h : IsAffineLine ℓ
+  · unfold lineKey
+    rw [dif_pos h, dif_pos h, dif_pos h]
+    unfold lineKeyCoeff
+    simp only [smul_eq_mul]
+    ring
+  · unfold lineKey
+    rw [dif_neg h, dif_neg h, dif_neg h]
+    ring
+
+/-- **lineKey value on an interior arc point** is a *strict* convex combination of
+the endpoint keys: there is some `t ∈ (0,1)` with `lineKey ℓ x = (1-t) * key p
++ t * key q`. -/
+lemma lineKey_of_mem_interior {ℓ : Set (ℝ × ℝ)}
+    {p q : ℝ × ℝ} (hpq : p ≠ q) {x : ℝ × ℝ} (hx : x ∈ interiorOfArc (segmentArc p q hpq)) :
+    ∃ t : ℝ, 0 < t ∧ t < 1 ∧ lineKey ℓ x = (1 - t) * lineKey ℓ p + t * lineKey ℓ q := by
+  unfold interiorOfArc at hx
+  simp only [Set.mem_image, Set.mem_setOf_eq] at hx
+  obtain ⟨t, ⟨h0, h1⟩, rfl⟩ := hx
+  refine ⟨t.val, h0, h1, ?_⟩
+  have heq : (segmentArc p q hpq).param t =
+      (((1 - (t : ℝ)) • p.1 + (t : ℝ) • q.1, (1 - (t : ℝ)) • p.2 + (t : ℝ) • q.2)
+        : ℝ × ℝ) := rfl
+  rw [heq, lineKey_affine_combination]
+
+/-- **W3, sortedness step.** `pointsOnLine P ℓ` is sorted by `lineKey ℓ` (non-strict).
+Direct from `List.pairwise_mergeSort` for the transitive total preorder
+`decide (lineKey ℓ p ≤ lineKey ℓ q)`. -/
+lemma pointsOnLine_pairwise_le (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (pointsOnLine P ℓ).Pairwise (fun p q => lineKey ℓ p ≤ lineKey ℓ q) := by
+  unfold pointsOnLine
+  have hs := List.pairwise_mergeSort (l := (P.filter (fun p => p ∈ ℓ)).toList)
+      (le := fun p q => decide (lineKey ℓ p ≤ lineKey ℓ q))
+      (trans := by intro a b c h1 h2; simp at h1 h2 ⊢; linarith)
+      (total := by intro a b; simp; by_cases h : lineKey ℓ a ≤ lineKey ℓ b
+                   · left; exact h
+                   · right; linarith)
+  exact hs.imp (fun {a b} hab => by simpa using hab)
+
+/-- **W3, strict sortedness.** When `ℓ` is an affine line, `pointsOnLine P ℓ` is
+*strictly* sorted by `lineKey ℓ`: distinct points of an affine line have distinct
+keys (`lineKey_injOn`), and the list is `Nodup`. -/
+lemma pointsOnLine_pairwise_lt {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    (h : IsAffineLine ℓ) :
+    (pointsOnLine P ℓ).Pairwise (fun p q => lineKey ℓ p < lineKey ℓ q) := by
+  have hLE := pointsOnLine_pairwise_le P ℓ
+  have hND : (pointsOnLine P ℓ).Pairwise (fun a b => a ≠ b) := pointsOnLine_nodup P ℓ
+  have hBoth := hLE.and hND
+  apply hBoth.imp_of_mem
+  intro a b ha hb ⟨hle, hne⟩
+  rcases lt_or_eq_of_le hle with hlt | heq
+  · exact hlt
+  · exfalso; apply hne
+    rw [mem_pointsOnLine] at ha hb
+    exact lineKey_injOn h ha.2 hb.2 heq
+
+/-- **Strict sortedness, indexed form.** For `i < j` indices into `pointsOnLine`,
+the keys are strictly ordered. -/
+lemma pointsOnLine_getElem_lt {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    (h : IsAffineLine ℓ) {i j : ℕ}
+    (hi : i < (pointsOnLine P ℓ).length) (hj : j < (pointsOnLine P ℓ).length)
+    (hij : i < j) :
+    lineKey ℓ (pointsOnLine P ℓ)[i] < lineKey ℓ (pointsOnLine P ℓ)[j] :=
+  (List.pairwise_iff_getElem.mp (pointsOnLine_pairwise_lt h)) i j hi hj hij
+
+/-- **W3, key inequality on edges.** Each edge `i` of `edgesOnLine P ℓ` has
+*strictly* increasing keys: `lineKey ℓ (edge.1) < lineKey ℓ (edge.2)`. -/
+lemma edgesOnLine_lineKey_lt {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    (h : IsAffineLine ℓ) {i : ℕ} (hi : i < (edgesOnLine P ℓ).length) :
+    lineKey ℓ ((edgesOnLine P ℓ)[i]).1 < lineKey ℓ ((edgesOnLine P ℓ)[i]).2 := by
+  obtain ⟨hi₁, hi₂, hget⟩ := edgesOnLine_getElem P ℓ i hi
+  rw [hget]
+  exact pointsOnLine_getElem_lt h hi₁ hi₂ (Nat.lt_succ_self i)
+
+/-- **W3, separation between distinct same-line edges.** For two distinct edges
+`i ≠ j` of `edgesOnLine P ℓ` (with `ℓ` an affine line), the closed `lineKey`
+intervals `[edge.1, edge.2]` of the two edges only meet at endpoints: w.l.o.g.
+`i < j`, then `lineKey ℓ (edges[i]).2 ≤ lineKey ℓ (edges[j]).1`. -/
+lemma edgesOnLine_lineKey_separated {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    (h : IsAffineLine ℓ) {i j : ℕ}
+    (hi : i < (edgesOnLine P ℓ).length) (hj : j < (edgesOnLine P ℓ).length)
+    (hij : i < j) :
+    lineKey ℓ ((edgesOnLine P ℓ)[i]).2 ≤ lineKey ℓ ((edgesOnLine P ℓ)[j]).1 := by
+  obtain ⟨hi₁, hi₂, hgeti⟩ := edgesOnLine_getElem P ℓ i hi
+  obtain ⟨hj₁, _hj₂, hgetj⟩ := edgesOnLine_getElem P ℓ j hj
+  rw [hgeti, hgetj]
+  -- We need `lineKey ℓ pts[i+1] ≤ lineKey ℓ pts[j]`. By sortedness with
+  -- `i + 1 ≤ j` this is strict if `i + 1 < j`, equality if `i + 1 = j`.
+  rcases Nat.lt_or_eq_of_le (Nat.succ_le_of_lt hij) with hlt | heq
+  · exact le_of_lt (pointsOnLine_getElem_lt h hi₂ hj₁ hlt)
+  · -- `i + 1 = j` case: indices `pts[i+1]` and `pts[j]` are the same point.
+    subst heq
+    exact le_refl _
+
+/-- **W3, interior disjointness within a single line.** Two distinct edges of
+`edgesOnLine P ℓ` have disjoint open-interior arcs. (Crucial: the proof exits
+through the `lineKey` intervals, which are *strictly* disjoint by sortedness.) -/
+lemma edgesOnLine_interior_disjoint {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    (hℓ : IsAffineLine ℓ) {i j : ℕ}
+    (hi : i < (edgesOnLine P ℓ).length) (hj : j < (edgesOnLine P ℓ).length)
+    (hij : i ≠ j)
+    (hdi : ((edgesOnLine P ℓ)[i]).1 ≠ ((edgesOnLine P ℓ)[i]).2)
+    (hdj : ((edgesOnLine P ℓ)[j]).1 ≠ ((edgesOnLine P ℓ)[j]).2) :
+    Disjoint (interiorOfArc (segmentArc ((edgesOnLine P ℓ)[i]).1 ((edgesOnLine P ℓ)[i]).2 hdi))
+             (interiorOfArc (segmentArc ((edgesOnLine P ℓ)[j]).1 ((edgesOnLine P ℓ)[j]).2 hdj)) := by
+  rw [Set.disjoint_iff_inter_eq_empty]
+  rw [Set.eq_empty_iff_forall_notMem]
+  intro x ⟨hxi, hxj⟩
+  -- Symmetrize: w.l.o.g. `i < j`.
+  wlog hij' : i < j with H
+  · exact H hℓ hj hi hij.symm hdj hdi x hxj hxi
+      (lt_of_le_of_ne (Nat.le_of_not_lt hij') (Ne.symm hij))
+  -- Interior point ⟹ `lineKey ℓ x` lies in the open intervals of both edges.
+  have hki₁ : lineKey ℓ ((edgesOnLine P ℓ)[i]).1 < lineKey ℓ ((edgesOnLine P ℓ)[i]).2 :=
+    edgesOnLine_lineKey_lt hℓ hi
+  have hkj₁ : lineKey ℓ ((edgesOnLine P ℓ)[j]).1 < lineKey ℓ ((edgesOnLine P ℓ)[j]).2 :=
+    edgesOnLine_lineKey_lt hℓ hj
+  -- Separation between intervals.
+  have hsep : lineKey ℓ ((edgesOnLine P ℓ)[i]).2 ≤ lineKey ℓ ((edgesOnLine P ℓ)[j]).1 :=
+    edgesOnLine_lineKey_separated hℓ hi hj hij'
+  -- Convex-combination representation of `lineKey ℓ x` in each interval.
+  obtain ⟨ti, hti0, hti1, hxi_key⟩ := lineKey_of_mem_interior (ℓ := ℓ) hdi hxi
+  obtain ⟨tj, htj0, htj1, hxj_key⟩ := lineKey_of_mem_interior (ℓ := ℓ) hdj hxj
+  -- `lineKey ℓ x` is strictly inside both intervals, contradicting the separation.
+  have hxi_in_lo : lineKey ℓ ((edgesOnLine P ℓ)[i]).1 < lineKey ℓ x := by
+    rw [hxi_key]; nlinarith
+  have hxi_in_hi : lineKey ℓ x < lineKey ℓ ((edgesOnLine P ℓ)[i]).2 := by
+    rw [hxi_key]; nlinarith
+  have hxj_in_lo : lineKey ℓ ((edgesOnLine P ℓ)[j]).1 < lineKey ℓ x := by
+    rw [hxj_key]; nlinarith
+  linarith
+
+/-- **W3, bare form.** Same-line interior disjointness phrased on bare edge
+entries `e₁, e₂ ∈ edgesOnLine P ℓ` with `e₁ ≠ e₂`. Equivalent in content to
+`edgesOnLine_interior_disjoint`, but conveniently shaped for the injection
+argument that goes through `lineForEdge` and bare edge data. -/
+lemma edgesOnLine_bare_disjoint {P : Finset (ℝ × ℝ)} {ℓ : Set (ℝ × ℝ)}
+    (hℓ : IsAffineLine ℓ)
+    {e₁ e₂ : (ℝ × ℝ) × (ℝ × ℝ)}
+    (he₁ : e₁ ∈ edgesOnLine P ℓ) (he₂ : e₂ ∈ edgesOnLine P ℓ) (hne : e₁ ≠ e₂)
+    (hd₁ : e₁.1 ≠ e₁.2) (hd₂ : e₂.1 ≠ e₂.2) :
+    Disjoint (interiorOfArc (segmentArc e₁.1 e₁.2 hd₁))
+             (interiorOfArc (segmentArc e₂.1 e₂.2 hd₂)) := by
+  rw [List.mem_iff_getElem] at he₁ he₂
+  obtain ⟨i, hi, hgi⟩ := he₁
+  obtain ⟨j, hj, hgj⟩ := he₂
+  have hij : i ≠ j := by
+    intro h; subst h; rw [hgi] at hgj; exact hne hgj
+  have hd₁' : ((edgesOnLine P ℓ)[i]).1 ≠ ((edgesOnLine P ℓ)[i]).2 := by
+    rw [hgi]; exact hd₁
+  have hd₂' : ((edgesOnLine P ℓ)[j]).1 ≠ ((edgesOnLine P ℓ)[j]).2 := by
+    rw [hgj]; exact hd₂
+  have hcore := edgesOnLine_interior_disjoint hℓ hi hj hij hd₁' hd₂'
+  convert hcore using 4 <;> first | exact hgi.symm | exact hgj.symm
+
+/-! #### Edge-list nodup for the injection step -/
+
+/-- `edgesOnLine P ℓ` is `Nodup`: distinct `i, j` indices give distinct consecutive
+pairs `(pts[i], pts[i+1])` (because `pointsOnLine_nodup` separates pts[i] alone). -/
+lemma edgesOnLine_nodup (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (edgesOnLine P ℓ).Nodup := by
+  rw [List.nodup_iff_pairwise_ne, List.pairwise_iff_getElem]
+  intro i j hi hj hij
+  obtain ⟨_, hk1i, hgeti⟩ := edgesOnLine_getElem P ℓ i hi
+  obtain ⟨_, _, hgetj⟩ := edgesOnLine_getElem P ℓ j hj
+  rw [hgeti, hgetj]
+  intro h
+  have h1 : (pointsOnLine P ℓ)[i] = (pointsOnLine P ℓ)[j] := by
+    have := congrArg Prod.fst h; simpa using this
+  have hnd := pointsOnLine_nodup P ℓ
+  rw [List.nodup_iff_pairwise_ne, List.pairwise_iff_getElem] at hnd
+  exact hnd i j _ _ hij h1
+
+/-- `edgesOnLineWithProof P ℓ` is `Nodup`: the `.pmap` preserves Nodup since the
+attached proof component is a `Prop` (subsingleton). -/
+lemma edgesOnLineWithProof_nodup (P : Finset (ℝ × ℝ)) (ℓ : Set (ℝ × ℝ)) :
+    (edgesOnLineWithProof P ℓ).Nodup := by
+  unfold edgesOnLineWithProof
+  rw [List.nodup_iff_pairwise_ne, List.pairwise_pmap]
+  have hnd := edgesOnLine_nodup P ℓ
+  rw [List.nodup_iff_pairwise_ne] at hnd
+  apply hnd.imp
+  intro a b hne h1 h2 heq
+  apply hne
+  have hf := congrArg PSigma.fst heq
+  simpa using hf
+
+/-- **Cross-line Nodup support.** If a `Σ'` edge entry `s` lies in
+`edgesOnLineWithProof P ℓ₁ ∩ edgesOnLineWithProof P ℓ₂` and the lines are affine,
+then `ℓ₁ = ℓ₂`. Reason: both `s.1.1` and `s.1.2` lie on both lines (`edgesOnLine_mem`),
+and they are distinct (`edgesOnLine_distinct`), so the two lines coincide
+(`lines_through_two_points_le_one`). -/
+lemma edgesOnLineWithProof_line_unique {P : Finset (ℝ × ℝ)} {L : Finset (Set (ℝ × ℝ))}
+    (hL : ∀ ℓ ∈ L, IsAffineLine ℓ)
+    {ℓ₁ ℓ₂ : Set (ℝ × ℝ)} (hℓ₁ : ℓ₁ ∈ L) (hℓ₂ : ℓ₂ ∈ L)
+    {s : Σ' e : (ℝ × ℝ) × (ℝ × ℝ), e.1 ≠ e.2}
+    (h₁ : s ∈ edgesOnLineWithProof P ℓ₁) (h₂ : s ∈ edgesOnLineWithProof P ℓ₂) :
+    ℓ₁ = ℓ₂ := by
+  have hsℓ₁ : s.1 ∈ edgesOnLine P ℓ₁ := mem_edgesOnLineWithProof h₁
+  have hsℓ₂ : s.1 ∈ edgesOnLine P ℓ₂ := mem_edgesOnLineWithProof h₂
+  have hmem₁ := edgesOnLine_mem P ℓ₁ s.1 hsℓ₁
+  have hmem₂ := edgesOnLine_mem P ℓ₂ s.1 hsℓ₂
+  have hdist : s.1.1 ≠ s.1.2 := s.2
+  by_contra hne
+  -- Two distinct points on two distinct lines, but at most one line through them.
+  have hboth_in_L : ∀ ℓ ∈ ({ℓ₁, ℓ₂} : Finset (Set (ℝ × ℝ))), ℓ ∈ L := by
+    intro ℓ hℓ
+    rcases Finset.mem_insert.mp hℓ with rfl | hℓ
+    · exact hℓ₁
+    · rw [Finset.mem_singleton] at hℓ; rw [hℓ]; exact hℓ₂
+  have hℓ_filter : ({ℓ₁, ℓ₂} : Finset (Set (ℝ × ℝ))) ⊆
+      L.filter (fun ℓ => s.1.1 ∈ ℓ ∧ s.1.2 ∈ ℓ) := by
+    intro ℓ hℓ
+    rcases Finset.mem_insert.mp hℓ with rfl | hℓ
+    · exact Finset.mem_filter.mpr ⟨hℓ₁, hmem₁.1.2, hmem₁.2.2⟩
+    · rw [Finset.mem_singleton] at hℓ; rw [hℓ]
+      exact Finset.mem_filter.mpr ⟨hℓ₂, hmem₂.1.2, hmem₂.2.2⟩
+  have h₂' : ({ℓ₁, ℓ₂} : Finset _).card ≤
+      (L.filter (fun ℓ => s.1.1 ∈ ℓ ∧ s.1.2 ∈ ℓ)).card :=
+    Finset.card_le_card hℓ_filter
+  have hcard : ({ℓ₁, ℓ₂} : Finset _).card = 2 := by
+    rw [Finset.card_insert_of_notMem (by rwa [Finset.mem_singleton]),
+        Finset.card_singleton]
+  have hbound : (L.filter (fun ℓ => s.1.1 ∈ ℓ ∧ s.1.2 ∈ ℓ)).card ≤ 1 :=
+    lines_through_two_points_le_one hL hdist
+  omega
+
+/-- **`allEdges P L` is `Nodup`** (under affineness). Per-line via
+`edgesOnLineWithProof_nodup`; cross-line via `edgesOnLineWithProof_line_unique`
+(applied through `Pairwise.imp_of_mem` on the `Nodup L.toList`). -/
+lemma allEdges_nodup (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (hL : ∀ ℓ ∈ L, IsAffineLine ℓ) :
+    (allEdges P L).Nodup := by
+  unfold allEdges
+  rw [List.nodup_iff_pairwise_ne]
+  rw [show (fun a b : Σ' e : (ℝ × ℝ) × (ℝ × ℝ), e.1 ≠ e.2 => a ≠ b) =
+        (fun a b => ¬ a = b) from rfl]
+  -- Equivalently: nodup of `flatMap`.
+  rw [← List.nodup_iff_pairwise_ne]
+  apply List.nodup_flatMap.mpr
+  refine ⟨fun ℓ _ => edgesOnLineWithProof_nodup P ℓ, ?_⟩
+  -- Pairwise (Disjoint on edgesOnLineWithProof) on L.toList: distinct lines'
+  -- edge lists are disjoint (because a shared `s` would force the lines to coincide).
+  have hLnd : L.toList.Nodup := Finset.nodup_toList _
+  rw [List.nodup_iff_pairwise_ne] at hLnd
+  apply hLnd.imp_of_mem
+  intro ℓ₁ ℓ₂ h₁L h₂L hne
+  rw [Finset.mem_toList] at h₁L h₂L
+  -- Disjoint two lists of edges: no element is in both.
+  rw [Function.onFun]
+  rw [List.disjoint_iff_ne]
+  intro s hs t ht heq
+  subst heq
+  apply hne
+  exact edgesOnLineWithProof_line_unique hL h₁L h₂L hs ht
+
+/-! #### W1 — the edge → line map -/
+
+/-- **W1, the line-for-edge witness.** Each entry of `allEdges P L` came from
+some `ℓ ∈ L.toList` via the `flatMap`; we name that line. -/
+lemma allEdges_mem_witness (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) :
+    ∃ ℓ ∈ L.toList, (allEdges P L)[i.val] ∈ edgesOnLineWithProof P ℓ := by
+  have hmem : (allEdges P L)[i.val] ∈ allEdges P L := List.getElem_mem _
+  unfold allEdges at hmem
+  rw [List.mem_flatMap] at hmem
+  exact hmem
+
+/-- **W1.** The edge-to-line map, defined via `Classical.choose`. -/
+noncomputable def lineForEdge (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) : Set (ℝ × ℝ) :=
+  (allEdges_mem_witness P L i).choose
+
+lemma lineForEdge_mem_toList (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) : lineForEdge P L i ∈ L.toList :=
+  (allEdges_mem_witness P L i).choose_spec.1
+
+lemma lineForEdge_mem (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) : lineForEdge P L i ∈ L := by
+  rw [← Finset.mem_toList]; exact lineForEdge_mem_toList P L i
+
+lemma allEdges_mem_edgesOnLineWithProof_lineForEdge
+    (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) :
+    (allEdges P L)[i.val] ∈ edgesOnLineWithProof P (lineForEdge P L i) :=
+  (allEdges_mem_witness P L i).choose_spec.2
+
+/-- The bare edge underlying `allEdges[i.val]` lies in `edgesOnLine P (lineForEdge i)`. -/
+lemma allEdges_fst_mem_edgesOnLine (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) :
+    ((allEdges P L)[i.val]).1 ∈ edgesOnLine P (lineForEdge P L i) :=
+  mem_edgesOnLineWithProof (allEdges_mem_edgesOnLineWithProof_lineForEdge P L i)
+
+/-- Both endpoints of the bare edge lie on `lineForEdge i`. -/
+lemma allEdges_endpoints_on_lineForEdge (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (i : Fin (stMultigraph P L).numEdges) :
+    ((allEdges P L)[i.val]).1.1 ∈ lineForEdge P L i
+    ∧ ((allEdges P L)[i.val]).1.2 ∈ lineForEdge P L i := by
+  have h := edgesOnLine_mem P (lineForEdge P L i) _ (allEdges_fst_mem_edgesOnLine P L i)
+  exact ⟨h.1.2, h.2.2⟩
+
+/-- **Interior of `(stMultigraph P L).arc i` ⊆ `lineForEdge i`** (W2 packaged). -/
+lemma stMultigraph_arc_interior_subset_line (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (hL : ∀ ℓ ∈ L, IsAffineLine ℓ) (i : Fin (stMultigraph P L).numEdges) :
+    interiorOfArc ((stMultigraph P L).arc i) ⊆ lineForEdge P L i := by
+  have hℓ_aff := hL _ (lineForEdge_mem P L i)
+  have hp := (allEdges_endpoints_on_lineForEdge P L i).1
+  have hq := (allEdges_endpoints_on_lineForEdge P L i).2
+  -- `(stMultigraph P L).arc i = segmentArc ((allEdges P L)[i.val].1).1 ... .2 _`.
+  show interiorOfArc (segmentArc ((allEdges P L)[i.val].1).1 ((allEdges P L)[i.val].1).2
+        (allEdges P L)[i.val].2) ⊆ lineForEdge P L i
+  exact interiorOfArc_segmentArc_subset_line hℓ_aff hp hq _
+
+/-- **W3 + W1 combined.** Two distinct edge indices that share a `lineForEdge`
+value have disjoint arc interiors. Uses `allEdges_nodup` to push index-distinctness
+to bare-edge-distinctness, then `edgesOnLine_bare_disjoint` on the common line. -/
+lemma stMultigraph_same_line_disjoint (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (hL : ∀ ℓ ∈ L, IsAffineLine ℓ)
+    {i j : Fin (stMultigraph P L).numEdges} (hij : i ≠ j)
+    (hline : lineForEdge P L i = lineForEdge P L j) :
+    Disjoint (interiorOfArc ((stMultigraph P L).arc i))
+             (interiorOfArc ((stMultigraph P L).arc j)) := by
+  set ℓ := lineForEdge P L i with hℓdef
+  have hℓ_aff : IsAffineLine ℓ := hL ℓ (lineForEdge_mem P L i)
+  -- Per-line membership of each edge's bare entry.
+  have hi_in : ((allEdges P L)[i.val]).1 ∈ edgesOnLine P ℓ :=
+    allEdges_fst_mem_edgesOnLine P L i
+  have hj_in : ((allEdges P L)[j.val]).1 ∈ edgesOnLine P ℓ := by
+    have := allEdges_fst_mem_edgesOnLine P L j
+    rwa [← hline] at this
+  -- Distinctness of bare entries: i ≠ j combined with allEdges_nodup.
+  have hne_bare : ((allEdges P L)[i.val]).1 ≠ ((allEdges P L)[j.val]).1 := by
+    intro hne_b
+    have hne_full : (allEdges P L)[i.val] = (allEdges P L)[j.val] := by
+      -- Two `Σ' e, P e` entries with `P : Prop` are equal iff their `.1`s match.
+      apply PSigma.ext hne_b
+      apply proof_irrel_heq
+    have hnd := allEdges_nodup P L hL
+    rw [List.nodup_iff_pairwise_ne, List.pairwise_iff_getElem] at hnd
+    apply hij
+    apply Fin.ext
+    rcases lt_trichotomy i.val j.val with hlt | heq | hgt
+    · exact absurd hne_full (hnd _ _ _ _ hlt)
+    · exact heq
+    · exact absurd hne_full.symm (hnd _ _ _ _ hgt)
+  -- Distinctness of endpoints.
+  have hd₁ := ((allEdges P L)[i.val]).2
+  have hd₂ := ((allEdges P L)[j.val]).2
+  -- Apply bare disjointness.
+  exact edgesOnLine_bare_disjoint hℓ_aff hi_in hj_in hne_bare hd₁ hd₂
+
+
+/-- **W4, the line-pair injection.** Maps crossing pairs `(i, j)` of edge indices
+to the pair of lines `(lineForEdge i, lineForEdge j) ∈ L ×ˢ L`. We use this as
+the witness for `Finset.card_le_card_of_injOn`. -/
+noncomputable def crossingLinePair (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
+    (ij : Fin (stMultigraph P L).numEdges × Fin (stMultigraph P L).numEdges) :
+    Set (ℝ × ℝ) × Set (ℝ × ℝ) :=
+  (lineForEdge P L ij.1, lineForEdge P L ij.2)
+
 /-- **Hypothesis `hwd` (carries the geometric crossing bound under encoding B).**
 `WellDrawn`, i.e. `crossingCount (stMultigraph P L) ≤ L.card²`.
 
-PROOF SKETCH (mathematically complete; Lean formalization carries one labelled
-residual). `crossingCount` counts edge-index pairs `i < j` whose segment
-*interiors* meet. Map each such pair to the unordered pair of lines
-`{line(i), line(j)}`:
-
-* **Same line** `line(i) = line(j)`: the two segments are distinct consecutive
-  segments of one sorted line; their interiors are *disjoint* because `lineKey` is
-  a strictly monotone affine coordinate along the line, sending the two open
-  segments to disjoint open key-intervals (consecutive sorted intervals share at
-  most an endpoint). So a crossing pair never lies on one line.
-* **Distinct lines** `ℓ ≠ ℓ'`: they meet in `≤ 1` point `x`
-  (`encard_inter_le_one_of_lines`); a crossing forces both interiors to contain
-  `x`. At most one segment of `ℓ` contains `x` in its interior (interiors within a
-  line are disjoint), likewise for `ℓ'`, so at most one crossing pair maps to each
-  line-pair `{ℓ, ℓ'}`.
-
-The map is therefore injective into `{2-subsets of L}`, giving
-`crossingCount ≤ C(|L|, 2) ≤ |L|²`. -/
+Proof. Map each crossing pair `(i, j)` to the unordered pair of lines `(line(i),
+line(j)) ∈ L ×ˢ L` via `crossingLinePair`. On a crossing pair:
+* `lineForEdge i ≠ lineForEdge j`: otherwise W3 (`stMultigraph_same_line_disjoint`)
+  forces disjoint interiors, contradicting the crossing's nonempty intersection.
+* The intersection point lies on `lineForEdge i ∩ lineForEdge j` (W2 packaged via
+  `stMultigraph_arc_interior_subset_line`).
+* By `encard_inter_le_one_of_lines`, the intersection is `≤ 1` point. So two
+  crossing pairs `(i₁, j₁)` and `(i₂, j₂)` mapped to the same line-pair must share
+  their crossing point; W3 then forces `i₁ = i₂` and `j₁ = j₂` (within each line,
+  at most one edge contains a given point in its interior).
+Cardinality: `crossingCount ≤ (L ×ˢ L).card = L.card²`. -/
 lemma stMultigraph_wellDrawn (P : Finset (ℝ × ℝ)) (L : Finset (Set (ℝ × ℝ)))
     (hL : ∀ ℓ ∈ L, IsAffineLine ℓ) :
     (stMultigraph P L).WellDrawn := by
-  -- OBSTRUCTION (geometric residual; the mathematics in the docstring above is
-  -- complete and was checked to be sound, but the Lean formalization is not yet
-  -- built). Reducing `crossingCount (stMultigraph P L) ≤ L.card²` requires four
-  -- concrete deferred Lean obligations, none of which has Mathlib support that
-  -- discharges it directly at v4.27.0:
-  --
-  --   W1  EDGE → LINE map `Fin (stMultigraph P L).numEdges → Set (ℝ×ℝ)` recovering
-  --       which `ℓ ∈ L` each edge came from. `allEdges` is a `List.flatMap`, so
-  --       this is a flatMap-index inversion (no clean Mathlib lemma; needs a
-  --       custom recursive block-index decomposition of `List.flatMap`).
-  --   W2  `interiorOfArc (segmentArc p q hpq) ⊆ ℓ` whenever `p, q ∈ ℓ` and
-  --       `IsAffineLine ℓ`: the open segment between two points of an affine line
-  --       lies on the line (affine-combination membership; `IsAffineLine` unfolds
-  --       to a single linear equation that is preserved under `(1-t)•p + t•q`).
-  --   W3  INTERIOR-DISJOINTNESS of distinct same-line segments: under the strictly
-  --       monotone affine coordinate `lineKey ℓ` (key injectivity is the already-
-  --       proven `lineKey_injOn`), `interiorOfArc (segmentArc pts[k] pts[k+1])`
-  --       maps to the OPEN key-interval `(key pts[k], key pts[k+1])`, and the
-  --       sorted distinct points give pairwise-disjoint open key-intervals, so
-  --       distinct segments of one line have disjoint interiors. This additionally
-  --       needs `pointsOnLine` SORTEDNESS (`List.sorted_mergeSort`/`List.Sorted`),
-  --       which is NOT yet extracted as a lemma (only `pointsOnLine_perm`/`_nodup`
-  --       exist). W3 ⟹ a crossing pair never lies on a single line, and ⟹ at most
-  --       one segment of a given line contains a fixed point in its interior.
-  --   W4  THE INJECTION: map each crossing pair `(i,j)` (i<j, interiors meet at a
-  --       point x) to the unordered line-pair `{line i, line j}`. By W2+W3 the
-  --       lines are distinct; they meet in ≤1 point (`encard_inter_le_one_of_lines`,
-  --       PROVEN), which is x; W3 forces i, j unique on their lines, so the map is
-  --       injective. Then `crossingCount ≤ (L.powersetCard 2).card = C(|L|,2) ≤
-  --       L.card²` via `Finset.card_le_card_of_injOn` + `Nat.choose_two_right`.
-  --
-  -- W1 (flatMap inversion) and W3 (sortedness + open-interval image) are the
-  -- substantive blockers; W2 and W4's arithmetic tail are routine once W1/W3 land.
-  sorry
+  -- Unfold `WellDrawn` to `crossingCount ≤ L.card²` (under encoding B,
+  -- `(stMultigraph P L).crossings = L.card^2`).
+  show (stMultigraph P L).crossingCount ≤ (stMultigraph P L).crossings
+  rw [show (stMultigraph P L).crossings = L.card ^ 2 from rfl]
+  unfold DrawnMultigraph.crossingCount
+  -- The crossing set as a Finset.
+  set S := Finset.filter (fun ij : Fin (stMultigraph P L).numEdges × Fin (stMultigraph P L).numEdges =>
+      ij.1 < ij.2 ∧
+      (interiorOfArc ((stMultigraph P L).arc ij.1) ∩
+        interiorOfArc ((stMultigraph P L).arc ij.2)).Nonempty) Finset.univ with hSdef
+  -- Inject into `L ×ˢ L`.
+  have hLcard : (L ×ˢ L).card = L.card ^ 2 := by rw [Finset.card_product]; ring
+  rw [← hLcard]
+  apply Finset.card_le_card_of_injOn (crossingLinePair P L)
+  · -- MapsTo: every crossing pair maps into `L ×ˢ L`.
+    intro ij _
+    unfold crossingLinePair
+    rw [Finset.mem_coe, Finset.mem_product]
+    exact ⟨lineForEdge_mem P L _, lineForEdge_mem P L _⟩
+  · -- Injectivity on the crossing set.
+    intro ij₁ hij₁ ij₂ hij₂ heq
+    rw [Finset.mem_coe, Finset.mem_filter] at hij₁ hij₂
+    obtain ⟨_, hlt₁, hcross₁⟩ := hij₁
+    obtain ⟨_, hlt₂, hcross₂⟩ := hij₂
+    -- Decompose `heq` into per-component equalities.
+    unfold crossingLinePair at heq
+    have hi_eq : lineForEdge P L ij₁.1 = lineForEdge P L ij₂.1 := by
+      have := congrArg Prod.fst heq; simpa using this
+    have hj_eq : lineForEdge P L ij₁.2 = lineForEdge P L ij₂.2 := by
+      have := congrArg Prod.snd heq; simpa using this
+    -- Distinct-line property for any crossing pair.
+    have hℓne₁ : lineForEdge P L ij₁.1 ≠ lineForEdge P L ij₁.2 := by
+      intro hℓ
+      have hne_idx : ij₁.1 ≠ ij₁.2 := ne_of_lt hlt₁
+      have := stMultigraph_same_line_disjoint P L hL hne_idx hℓ
+      rw [Set.disjoint_iff_inter_eq_empty] at this
+      rcases hcross₁ with ⟨x, hx⟩
+      have hxin : x ∈ interiorOfArc ((stMultigraph P L).arc ij₁.1) ∩
+                  interiorOfArc ((stMultigraph P L).arc ij₁.2) := hx
+      rw [this] at hxin; exact hxin.elim
+    -- Each crossing point lies on both lines.
+    obtain ⟨x₁, hx₁⟩ := hcross₁
+    obtain ⟨x₂, hx₂⟩ := hcross₂
+    have hx₁_on_ℓi : x₁ ∈ lineForEdge P L ij₁.1 :=
+      stMultigraph_arc_interior_subset_line P L hL ij₁.1 hx₁.1
+    have hx₁_on_ℓj : x₁ ∈ lineForEdge P L ij₁.2 :=
+      stMultigraph_arc_interior_subset_line P L hL ij₁.2 hx₁.2
+    have hx₂_on_ℓi : x₂ ∈ lineForEdge P L ij₂.1 :=
+      stMultigraph_arc_interior_subset_line P L hL ij₂.1 hx₂.1
+    have hx₂_on_ℓj : x₂ ∈ lineForEdge P L ij₂.2 :=
+      stMultigraph_arc_interior_subset_line P L hL ij₂.2 hx₂.2
+    -- The intersection of the two lines is `≤ 1` point, hence `x₁ = x₂`.
+    have hℓi_aff : IsAffineLine (lineForEdge P L ij₁.1) := hL _ (lineForEdge_mem P L _)
+    have hℓj_aff : IsAffineLine (lineForEdge P L ij₁.2) := hL _ (lineForEdge_mem P L _)
+    have hsub := encard_inter_le_one_of_lines hℓi_aff hℓj_aff hℓne₁
+    have hx₁_inter : x₁ ∈ lineForEdge P L ij₁.1 ∩ lineForEdge P L ij₁.2 := ⟨hx₁_on_ℓi, hx₁_on_ℓj⟩
+    have hx₂_inter : x₂ ∈ lineForEdge P L ij₁.1 ∩ lineForEdge P L ij₁.2 := by
+      rw [hi_eq, hj_eq]; exact ⟨hx₂_on_ℓi, hx₂_on_ℓj⟩
+    have hxeq : x₁ = x₂ := hsub hx₁_inter hx₂_inter
+    -- Now within each line, at most one edge contains a given interior point.
+    -- Apply W3 to show ij₁.1 = ij₂.1 and ij₁.2 = ij₂.2.
+    apply Prod.ext
+    · -- ij₁.1 = ij₂.1
+      by_contra hne
+      have h_disj := stMultigraph_same_line_disjoint P L hL hne hi_eq
+      rw [Set.disjoint_iff_inter_eq_empty] at h_disj
+      have hx_both : x₁ ∈ interiorOfArc ((stMultigraph P L).arc ij₁.1) ∩
+                          interiorOfArc ((stMultigraph P L).arc ij₂.1) := by
+        refine ⟨hx₁.1, ?_⟩
+        rw [hxeq]; exact hx₂.1
+      rw [h_disj] at hx_both; exact hx_both.elim
+    · -- ij₁.2 = ij₂.2
+      by_contra hne
+      have h_disj := stMultigraph_same_line_disjoint P L hL hne hj_eq
+      rw [Set.disjoint_iff_inter_eq_empty] at h_disj
+      have hx_both : x₁ ∈ interiorOfArc ((stMultigraph P L).arc ij₁.2) ∩
+                          interiorOfArc ((stMultigraph P L).arc ij₂.2) := by
+        refine ⟨hx₁.2, ?_⟩
+        rw [hxeq]; exact hx₂.2
+      rw [h_disj] at hx_both; exact hx_both.elim
 
 /-- **Szemerédi–Trotter**, conditional on the multigraph crossing lemma `hCL`.
 
 Assembled from the Phase-1 combinatorial core `incidence_bound_of_crossingLemma`
-and the geometric realization `stMultigraph` with its five discharged hypotheses.
-Four of those — `stMultigraph_card_V`, `stMultigraph_multiplicity_le_one`,
-`incidences_le_numEdges_add`, `stMultigraph_crossings_le` — are sorry-free;
-`stMultigraph_wellDrawn` carries the single labelled geometric residual
-(`crossingCount ≤ |L|²`). So this is Szemerédi–Trotter conditional on `hCL` **and**
-that one geometric bound; the `hCL` hypothesis threads the crossing lemma at the
-type level (not via `sorryAx`). -/
+and the geometric realization `stMultigraph` with its five discharged hypotheses
+(`stMultigraph_card_V`, `stMultigraph_multiplicity_le_one`, `stMultigraph_wellDrawn`,
+`incidences_le_numEdges_add`, `stMultigraph_crossings_le`) — all PROVEN sorry-free.
+So this is Szemerédi–Trotter conditional on `hCL` alone; the `hCL` hypothesis
+threads the crossing lemma at the type level (no `sorryAx`).
+
+Axiom audit: `[propext, Classical.choice, Quot.sound]`. -/
 theorem szemerediTrotter_of_crossingLemma
     (hCL : CrossingLemmaMultigraphStatement) :
     SzemerediTrotterStatement := by
