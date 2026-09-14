@@ -40,8 +40,44 @@ added over time.
 
 ## Status
 
-Work in progress. See each module's `README.md` / `PLAN.md` for its live frontier
-and known `sorry`s.
+Inventory as of 2026-09-14, taken from the module docs, the Lean source, and the
+git log. No build or `#print axioms` was re-run for this inventory; axiom claims
+below are as reported by the module docs.
+
+Theorem 1.1 is **not** closed unconditionally. The reduction steps along the
+spine are done; the start of the spine (the crossing lemma) and the
+Szemerédi–Trotter → Pach–Sharir lift are open.
+
+| Module | State |
+|---|---|
+| `pdz` | **Done, conditional.** Theorem 1.1 follows from the single named hypothesis `PositiveAuxiliaryIncidenceCardBoundStatement`. The live `PachDeZeeuw/` files contain no `sorry`. Old work is parked in `attic/AlgebraicPrelim.lean` (imported by nothing; 5 `sorry`s). |
+| `incidence-assembly` | **Gap B open.** The Corollary 2.4 → pdz-hypothesis bridge (Lemmas 3.2–3.7) is one `sorry` (`IncidenceAssembly/Bridge.lean`). Per its README, `pachDeZeeuwTheorem11_unconditional` reports `sorryAx`, from Gap A and Gap B. |
+| `pach-sharir` | **Szemerédi–Trotter for lines closed, conditional on the crossing lemma** as hypothesis `hCL` (docs report axioms `[propext, Classical.choice, Quot.sound]`). **Gap A open:** `theorem23` and `corollary24` are `sorry` (`PachSharir/Theorem23.lean`). Plan: `docs/superpowers/plans/2026-05-27-pach-sharir-theorem23-from-szemeredi-trotter.md`. |
+| `crossing-lemma` | **Not proven.** `CrossingLemmaMultigraphStatement` is a `Prop`; `crossingLemma_of_weakBound` derives it from `WeakAveragedBound`, which no file proves. Further open items: one `sorry` in `PlaneArcSeparation.lean` (labelled CONJECTURED); `PlanarEdgeBound.lean` contains `sorry` and is excluded from the aggregator; `subsetAveraging_master` is `sorry`, labelled a proven obstruction and not used by the main theorem. |
+| `bezout` (Thm 2.1) | Scaffold only: definitions and `Bezout21Statement`. No proofs, no `sorry`. |
+| `milnor-thom` (Thm 2.2) | Scaffold only: statement definitions. Open policy decision: axiomatize the component bound as a typed interface, or attempt the finite-set corollary. |
+| `curve-symmetries` (Lemmas 2.5–2.6) | Scaffold only: statement definitions. |
+
+No module declares a top-level `axiom`.
+
+### Open items along the spine
+
+1. **Crossing lemma** — the root hypothesis of everything downstream:
+   `WeakAveragedBound`, the planar edge bound, and the arc-separation residual.
+2. **Gap A** — Theorem 2.3 / Corollary 2.4 from Szemerédi–Trotter (has a plan).
+3. **Gap B** — the §3 assembly, Lemmas 3.2–3.7.
+4. **§2 algebraic-geometry inputs** — statements only.
+
+### Known out-of-date docs
+
+- `crossing-lemma/PLAN.md` and `crossing-lemma/README.md` list
+  `CrossingFreeEuler.lean`, which does not exist; the PLAN also describes a
+  vendor pass that appears to be complete.
+- `pdz/PLAN.md` says the module has one `sorry` in the closed theorem; commit
+  `d48883e` moved that `sorry` into `incidence-assembly`, and pdz is now
+  `sorry`-free.
+
+See each module's `README.md` / `PLAN.md` for its detailed frontier.
 
 ## License
 
